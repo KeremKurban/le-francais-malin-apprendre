@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +6,10 @@ import { Trophy, Star, Flame, BookOpen } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
+import Leaderboard from '@/components/Leaderboard';
+import Mistakes from '@/components/Mistakes';
+import LoginModal from '@/components/LoginModal';
+import { UserManager, UserData } from '@/utils/UserManager';
 
 interface Topic {
   id: string;
@@ -18,69 +21,75 @@ interface Topic {
   color: string;
 }
 
-interface UserProgress {
-  level: string;
-  streak: number;
-  totalPoints: number;
-  badges: string[];
-  topicProgress: Record<string, number>;
-}
-
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [userProgress, setUserProgress] = useState<UserProgress>({
-    level: 'A2',
-    streak: 7,
-    totalPoints: 1250,
-    badges: ['beginner', 'consistent', 'grammar-master'],
-    topicProgress: {
-      'si-present-imperatif': 85,
-      'si-present-futur': 72,
-      'temps-passe': 90,
-      'conditionnel': 65,
-      'mise-en-relief': 78,
-      'pronoms-interrogatifs': 88,
-      'place-adverbe': 70,
-      'articulateurs-discours': 45,
-      'adverbes-ment': 60,
-      'hypothese-si': 55,
-      'plus-que-parfait': 40,
-      'questions-formelles': 68,
-      'adjectifs-indefinis': 52,
-      'superlatif': 75,
-      'formes-interrogation': 63,
-      'accord-participe-etre': 58,
-      'subjonctif-obligation': 35,
-      'genre-noms': 82,
-      'marqueurs-temporels': 47,
-      'pronoms-cod-coi': 71,
-      'structures-comparaison': 66,
-      'devoir-imperatif-falloir': 53,
-      'negation': 79,
-      'pronoms-relatifs': 44,
-      'adverbes-lieu': 61
+  const [userProgress, setUserProgress] = useState<UserData | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    // Check if user exists and handle session
+    const existingUser = UserManager.getCurrentUser();
+    
+    if (!existingUser) {
+      setShowLoginModal(true);
+    } else {
+      // Check if this is a new session (new page entry vs refresh)
+      if (UserManager.isNewSession()) {
+        // Reset progress for new session but keep user data
+        const resetUser = UserManager.resetProgressForNewSession();
+        setUserProgress(resetUser);
+      } else {
+        // Regular refresh - keep all progress
+        setUserProgress(existingUser);
+      }
     }
-  });
+  }, []);
+
+  const handleLogin = (name: string) => {
+    const newUser = UserManager.createNewUser(name);
+    setUserProgress(newUser);
+    setShowLoginModal(false);
+  };
 
   const handleTopicSelect = (topic: Topic) => {
     setSelectedTopic(topic);
     setCurrentView('exercise');
   };
 
-  const handleExerciseComplete = (score: number, topic: Topic) => {
-    setUserProgress(prev => ({
-      ...prev,
-      totalPoints: prev.totalPoints + score,
+  const handleExerciseComplete = (score: number, topic: Topic, mistakes?: Array<{question: string, userAnswer: string, correctAnswer: string}>) => {
+    if (!userProgress) return;
+
+    // Add mistakes to user data
+    if (mistakes && mistakes.length > 0) {
+      mistakes.forEach(mistake => {
+        UserManager.addMistake({
+          topic: topic.id,
+          question: mistake.question,
+          userAnswer: mistake.userAnswer,
+          correctAnswer: mistake.correctAnswer
+        });
+      });
+    }
+
+    // Update progress
+    const updatedProgress = {
+      totalPoints: userProgress.totalPoints + score,
       topicProgress: {
-        ...prev.topicProgress,
-        [topic.id]: Math.max(prev.topicProgress[topic.id] || 0, score)
+        ...userProgress.topicProgress,
+        [topic.id]: Math.max(userProgress.topicProgress[topic.id] || 0, score)
       }
-    }));
+    };
+
+    UserManager.updateUserProgress(updatedProgress);
+    
+    setUserProgress(prev => prev ? { ...prev, ...updatedProgress } : null);
     setCurrentView('dashboard');
   };
 
   const renderView = () => {
+    if (!userProgress) return null;
+
     switch (currentView) {
       case 'topics':
         return <GrammarTopics onTopicSelect={handleTopicSelect} userProgress={userProgress} />;
@@ -94,10 +103,18 @@ const Index = () => {
         );
       case 'progress':
         return <ProgressDashboard userProgress={userProgress} />;
+      case 'leaderboard':
+        return <Leaderboard />;
+      case 'mistakes':
+        return <Mistakes />;
       default:
         return <DashboardView userProgress={userProgress} setCurrentView={setCurrentView} />;
     }
   };
+
+  if (!userProgress) {
+    return <LoginModal isOpen={showLoginModal} onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">
@@ -111,28 +128,45 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">FrançaisPro</h1>
-                <p className="text-sm text-gray-600">Niveau {userProgress.level}</p>
+                <p className="text-sm text-gray-600">Bonjour, {userProgress.name} • Niveau {userProgress.level}</p>
               </div>
             </div>
             
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex space-x-4">
               <Button 
                 variant={currentView === 'dashboard' ? 'default' : 'ghost'}
                 onClick={() => setCurrentView('dashboard')}
+                size="sm"
               >
                 Tableau de bord
               </Button>
               <Button 
                 variant={currentView === 'topics' ? 'default' : 'ghost'}
                 onClick={() => setCurrentView('topics')}
+                size="sm"
               >
                 Grammaire
               </Button>
               <Button 
                 variant={currentView === 'progress' ? 'default' : 'ghost'}
                 onClick={() => setCurrentView('progress')}
+                size="sm"
               >
                 Progrès
+              </Button>
+              <Button 
+                variant={currentView === 'leaderboard' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('leaderboard')}
+                size="sm"
+              >
+                Classement
+              </Button>
+              <Button 
+                variant={currentView === 'mistakes' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('mistakes')}
+                size="sm"
+              >
+                Erreurs
               </Button>
             </nav>
 
@@ -148,6 +182,52 @@ const Index = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden border-t border-blue-100">
+          <div className="px-4 py-2 flex space-x-2 overflow-x-auto">
+            <Button 
+              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('dashboard')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Accueil
+            </Button>
+            <Button 
+              variant={currentView === 'topics' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('topics')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Grammaire
+            </Button>
+            <Button 
+              variant={currentView === 'progress' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('progress')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Progrès
+            </Button>
+            <Button 
+              variant={currentView === 'leaderboard' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('leaderboard')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Classement
+            </Button>
+            <Button 
+              variant={currentView === 'mistakes' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('mistakes')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Erreurs
+            </Button>
+          </div>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -159,7 +239,7 @@ const Index = () => {
 };
 
 interface DashboardViewProps {
-  userProgress: UserProgress;
+  userProgress: UserData;
   setCurrentView: (view: string) => void;
 }
 
@@ -172,7 +252,7 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
       {/* Welcome Section */}
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          Bonjour ! Prêt à améliorer votre français ?
+          Bonjour {userProgress.name} ! Prêt à améliorer votre français ?
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Maîtrisez la grammaire française avec des exercices adaptatifs pour les niveaux A2/B1
@@ -222,7 +302,7 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100">Progrès moyen</p>
-                <p className="text-2xl font-bold">{Math.round(averageProgress)}%</p>
+                <p className="text-2xl font-bold">{Math.round(averageProgress || 0)}%</p>
               </div>
               <BookOpen className="w-8 h-8 text-green-200" />
             </div>
@@ -231,7 +311,7 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Continuer l'apprentissage</CardTitle>
@@ -251,45 +331,65 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
 
         <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
-            <CardTitle className="text-xl text-gray-900">Suivre vos progrès</CardTitle>
+            <CardTitle className="text-xl text-gray-900">Voir le classement</CardTitle>
             <CardDescription>
-              Consultez vos statistiques détaillées et badges gagnés
+              Comparez vos performances avec d'autres apprenants
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button 
-              onClick={() => setCurrentView('progress')}
+              onClick={() => setCurrentView('leaderboard')}
               variant="outline"
-              className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+              className="w-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
             >
-              Voir les progrès
+              Consulter le classement
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900">Analyser vos erreurs</CardTitle>
+            <CardDescription>
+              Consultez vos erreurs passées pour mieux progresser
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => setCurrentView('mistakes')}
+              variant="outline"
+              className="w-full border-2 border-red-600 text-red-600 hover:bg-red-50"
+            >
+              Voir les erreurs
             </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Progress */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl text-gray-900">Progrès par sujet</CardTitle>
-          <CardDescription>
-            Votre performance dans chaque domaine grammatical
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries(userProgress.topicProgress).map(([topic, progress]) => (
-            <div key={topic} className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  {topic.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </span>
-                <span className="text-sm text-gray-500">{progress}%</span>
+      {Object.keys(userProgress.topicProgress).length > 0 && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900">Progrès par sujet</CardTitle>
+            <CardDescription>
+              Votre performance dans chaque domaine grammatical
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.entries(userProgress.topicProgress).slice(0, 5).map(([topic, progress]) => (
+              <div key={topic} className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    {topic.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </span>
+                  <span className="text-sm text-gray-500">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
               </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
