@@ -3,9 +3,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ChevronRight, Check, Star } from 'lucide-react';
+import { Arrow, Check, Star } from 'lucide-react';
 
-const grammarTopics = [
+interface Topic {
+  id: string;
+  title: string;
+  description: string;
+  example: string;
+  difficulty: string;
+  exercises: number;
+  color: string;
+}
+
+interface UserProgress {
+  level: string;
+  streak: number;
+  totalPoints: number;
+  badges: string[];
+  topicProgress: Record<string, number>;
+}
+
+interface GrammarTopicsProps {
+  onTopicSelect: (topic: Topic) => void;
+  userProgress: UserProgress;
+}
+
+const grammarTopics: Topic[] = [
+  // Original topics
   {
     id: 'si-present-imperatif',
     title: 'Si + présent + impératif',
@@ -42,50 +66,134 @@ const grammarTopics = [
     exercises: 20,
     color: 'from-orange-500 to-orange-600'
   },
+  
+  // New topics from user request
   {
-    id: 'mise-en-relief',
-    title: 'La mise en relief',
-    description: 'Ce qui/ce que/c\'est/ce sont',
-    example: 'Ce qui m\'énerve, c\'est le bruit.',
+    id: 'articulateurs-discours',
+    title: 'Les articulateurs du discours',
+    description: 'Structurer et organiser les idées',
+    example: 'D\'abord, ensuite, enfin, par conséquent...',
     difficulty: 'B1',
+    exercises: 22,
+    color: 'from-teal-500 to-teal-600'
+  },
+  {
+    id: 'adverbes-ment',
+    title: 'Les adverbes en "-ment"',
+    description: 'Formation et usage des adverbes de manière',
+    example: 'Elle parle couramment français.',
+    difficulty: 'A2+',
     exercises: 16,
+    color: 'from-cyan-500 to-cyan-600'
+  },
+  {
+    id: 'hypothese-si',
+    title: 'L\'hypothèse avec si (complexe)',
+    description: 'Si + imparfait + conditionnel',
+    example: 'Si j\'étais riche, j\'achèterais une maison.',
+    difficulty: 'B1',
+    exercises: 19,
+    color: 'from-indigo-500 to-indigo-600'
+  },
+  {
+    id: 'plus-que-parfait',
+    title: 'Le plus-que-parfait',
+    description: 'Antériorité dans le passé',
+    example: 'Il avait mangé avant de partir.',
+    difficulty: 'B1',
+    exercises: 17,
+    color: 'from-violet-500 to-violet-600'
+  },
+  {
+    id: 'questions-formelles',
+    title: 'Les questions formelles',
+    description: 'Inversion du sujet et registre soutenu',
+    example: 'Pourrions-nous vous rencontrer demain ?',
+    difficulty: 'B1',
+    exercises: 14,
+    color: 'from-pink-500 to-pink-600'
+  },
+  {
+    id: 'adjectifs-indefinis',
+    title: 'Les adjectifs indéfinis',
+    description: 'Tout, tous, quelques, plusieurs, certains',
+    example: 'Quelques personnes sont venues.',
+    difficulty: 'A2+',
+    exercises: 18,
+    color: 'from-rose-500 to-rose-600'
+  },
+  {
+    id: 'superlatif',
+    title: 'Le superlatif',
+    description: 'Le plus, le moins, le mieux',
+    example: 'C\'est le livre le plus intéressant.',
+    difficulty: 'A2+',
+    exercises: 15,
+    color: 'from-amber-500 to-amber-600'
+  },
+  {
+    id: 'pronoms-cod-coi',
+    title: 'Les pronoms COD/COI',
+    description: 'Le, la, les, lui, leur, en, y',
+    example: 'Je lui ai donné le livre.',
+    difficulty: 'B1',
+    exercises: 24,
+    color: 'from-emerald-500 to-emerald-600'
+  },
+  {
+    id: 'subjonctif-obligation',
+    title: 'Le subjonctif et l\'obligation',
+    description: 'Il faut que, il est nécessaire que',
+    example: 'Il faut que tu viennes demain.',
+    difficulty: 'B1+',
+    exercises: 21,
     color: 'from-red-500 to-red-600'
   },
   {
-    id: 'pronoms-interrogatifs',
-    title: 'Pronoms interrogatifs',
-    description: 'Lequel/laquelle/lesquels/lesquelles',
-    example: 'Parmi ces robes, laquelle préfères-tu ?',
+    id: 'marqueurs-temporels',
+    title: 'Les marqueurs temporels',
+    description: 'Il y a, pendant, depuis, dans',
+    example: 'Je l\'ai vu il y a trois jours.',
     difficulty: 'A2+',
-    exercises: 14,
-    color: 'from-yellow-500 to-yellow-600'
+    exercises: 16,
+    color: 'from-lime-500 to-lime-600'
   },
   {
-    id: 'place-adverbe',
-    title: 'Place de l\'adverbe',
-    description: 'Position correcte des adverbes',
-    example: 'Elle va souvent au cinéma.',
+    id: 'pronoms-relatifs',
+    title: 'Les pronoms relatifs',
+    description: 'Qui, que, dont, où, lequel, avec qui',
+    example: 'L\'homme dont je parle est médecin.',
+    difficulty: 'B1',
+    exercises: 23,
+    color: 'from-sky-500 to-sky-600'
+  },
+  {
+    id: 'negation',
+    title: 'La négation',
+    description: 'Ne...pas, ne...plus, ne...jamais, ne...rien',
+    example: 'Je ne vois personne.',
     difficulty: 'A2',
-    exercises: 12,
-    color: 'from-pink-500 to-pink-600'
+    exercises: 17,
+    color: 'from-slate-500 to-slate-600'
   }
 ];
 
-const GrammarTopics = ({ onTopicSelect, userProgress }) => {
-  const getDifficultyColor = (difficulty) => {
+const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
+  const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'A2': return 'bg-green-100 text-green-800';
       case 'A2+': return 'bg-blue-100 text-blue-800';
       case 'B1': return 'bg-purple-100 text-purple-800';
+      case 'B1+': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getTopicProgress = (topicId) => {
+  const getTopicProgress = (topicId: string): number => {
     return userProgress.topicProgress[topicId] || 0;
   };
 
-  const isTopicCompleted = (topicId) => {
+  const isTopicCompleted = (topicId: string): boolean => {
     return getTopicProgress(topicId) >= 80;
   };
 
@@ -96,12 +204,12 @@ const GrammarTopics = ({ onTopicSelect, userProgress }) => {
           Sujets de grammaire
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Choisissez un sujet pour commencer vos exercices adaptatifs
+          Choisissez un sujet pour commencer vos exercices adaptatifs avec des textes longs et complexes
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {grammarTopics.map((topic, index) => {
+        {grammarTopics.map((topic) => {
           const progress = getTopicProgress(topic.id);
           const isCompleted = isTopicCompleted(topic.id);
           
@@ -134,7 +242,7 @@ const GrammarTopics = ({ onTopicSelect, userProgress }) => {
                       {topic.description}
                     </CardDescription>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                  <Arrow className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                 </div>
               </CardHeader>
 

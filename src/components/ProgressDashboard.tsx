@@ -31,18 +31,30 @@ const badgeDefinitions = {
   }
 };
 
-const ProgressDashboard = ({ userProgress }) => {
-  const totalTopics = Object.keys(userProgress.topicProgress).length;
-  const completedTopics = Object.values(userProgress.topicProgress).filter(progress => progress >= 80).length;
-  const averageProgress = Object.values(userProgress.topicProgress).reduce((a, b) => a + b, 0) / totalTopics;
+interface UserProgress {
+  level: string;
+  streak: number;
+  totalPoints: number;
+  badges: string[];
+  topicProgress: Record<string, number>;
+}
 
-  const getProgressColor = (progress) => {
+interface ProgressDashboardProps {
+  userProgress: UserProgress;
+}
+
+const ProgressDashboard = ({ userProgress }: ProgressDashboardProps) => {
+  const totalTopics = Object.keys(userProgress.topicProgress).length;
+  const completedTopics = Object.values(userProgress.topicProgress).filter((progress: number) => progress >= 80).length;
+  const averageProgress = Object.values(userProgress.topicProgress).reduce((a: number, b: number) => a + b, 0) / totalTopics;
+
+  const getProgressColor = (progress: number) => {
     if (progress >= 80) return 'bg-green-500';
     if (progress >= 60) return 'bg-yellow-500';
     return 'bg-red-500';
   };
 
-  const getProgressLabel = (progress) => {
+  const getProgressLabel = (progress: number) => {
     if (progress >= 80) return 'Maîtrisé';
     if (progress >= 60) return 'En cours';
     return 'À revoir';
@@ -154,7 +166,7 @@ const ProgressDashboard = ({ userProgress }) => {
           </CardHeader>
           <CardContent className="space-y-4">
             {userProgress.badges.map((badgeId, index) => {
-              const badge = badgeDefinitions[badgeId];
+              const badge = badgeDefinitions[badgeId as keyof typeof badgeDefinitions];
               if (!badge) return null;
               
               const IconComponent = badge.icon;

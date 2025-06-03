@@ -2,17 +2,34 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Star, Flame, BookOpen } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
 
+interface Topic {
+  id: string;
+  title: string;
+  description: string;
+  example: string;
+  difficulty: string;
+  exercises: number;
+  color: string;
+}
+
+interface UserProgress {
+  level: string;
+  streak: number;
+  totalPoints: number;
+  badges: string[];
+  topicProgress: Record<string, number>;
+}
+
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [selectedTopic, setSelectedTopic] = useState(null);
-  const [userProgress, setUserProgress] = useState({
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [userProgress, setUserProgress] = useState<UserProgress>({
     level: 'A2',
     streak: 7,
     totalPoints: 1250,
@@ -24,16 +41,34 @@ const Index = () => {
       'conditionnel': 65,
       'mise-en-relief': 78,
       'pronoms-interrogatifs': 88,
-      'place-adverbe': 70
+      'place-adverbe': 70,
+      'articulateurs-discours': 45,
+      'adverbes-ment': 60,
+      'hypothese-si': 55,
+      'plus-que-parfait': 40,
+      'questions-formelles': 68,
+      'adjectifs-indefinis': 52,
+      'superlatif': 75,
+      'formes-interrogation': 63,
+      'accord-participe-etre': 58,
+      'subjonctif-obligation': 35,
+      'genre-noms': 82,
+      'marqueurs-temporels': 47,
+      'pronoms-cod-coi': 71,
+      'structures-comparaison': 66,
+      'devoir-imperatif-falloir': 53,
+      'negation': 79,
+      'pronoms-relatifs': 44,
+      'adverbes-lieu': 61
     }
   });
 
-  const handleTopicSelect = (topic) => {
+  const handleTopicSelect = (topic: Topic) => {
     setSelectedTopic(topic);
     setCurrentView('exercise');
   };
 
-  const handleExerciseComplete = (score, topic) => {
+  const handleExerciseComplete = (score: number, topic: Topic) => {
     setUserProgress(prev => ({
       ...prev,
       totalPoints: prev.totalPoints + score,
@@ -123,8 +158,14 @@ const Index = () => {
   );
 };
 
-const DashboardView = ({ userProgress, setCurrentView }) => {
-  const averageProgress = Object.values(userProgress.topicProgress).reduce((a, b) => a + b, 0) / Object.values(userProgress.topicProgress).length;
+interface DashboardViewProps {
+  userProgress: UserProgress;
+  setCurrentView: (view: string) => void;
+}
+
+const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => {
+  const progressValues = Object.values(userProgress.topicProgress) as number[];
+  const averageProgress = progressValues.reduce((a: number, b: number) => a + b, 0) / progressValues.length;
 
   return (
     <div className="space-y-8">
@@ -240,7 +281,7 @@ const DashboardView = ({ userProgress, setCurrentView }) => {
             <div key={topic} className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm font-medium text-gray-700">
-                  {topic.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {topic.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </span>
                 <span className="text-sm text-gray-500">{progress}%</span>
               </div>
