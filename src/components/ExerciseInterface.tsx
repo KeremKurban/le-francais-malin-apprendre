@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Check, Circle, Book } from 'lucide-react';
+import { ArrowLeft, Check, Circle, Book, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Topic {
@@ -34,7 +34,7 @@ interface ExerciseInterfaceProps {
   onBack: () => void;
 }
 
-// Enhanced exercise data with longer, more complex texts
+// Enhanced exercise data with more interactive exercises for all topics
 const exerciseData: Record<string, Exercise[]> = {
   'si-present-imperatif': [
     {
@@ -54,12 +54,13 @@ const exerciseData: Record<string, Exercise[]> = {
       explanation: 'La structure "si + présent + impératif" permet de donner des conseils conditionnels.'
     },
     {
-      type: 'text_analysis',
-      prompt: 'Dans ce dialogue, identifiez et corrigez les erreurs dans l\'usage de "si + présent + impératif":',
-      text: 'Marie : "Si tu vas au marché, tu achètes du pain ?" Jean : "Si vous voulez, vous venez avec moi." Sophie : "Si nous partons maintenant, nous prenons le bus."',
-      answer: 'achète,venez,prenons',
+      type: 'error_correction',
+      prompt: 'Corrigez les erreurs dans ces phrases (cliquez sur les mots incorrects):',
+      text: 'Si tu vas au marché, tu achètes du pain. Si vous voulez, vous venez avec moi. Si nous partons maintenant, nous prenons le bus.',
+      words: ['Si', 'tu', 'vas', 'au', 'marché,', 'tu', 'achètes', 'du', 'pain.', 'Si', 'vous', 'voulez,', 'vous', 'venez', 'avec', 'moi.', 'Si', 'nous', 'partons', 'maintenant,', 'nous', 'prenons', 'le', 'bus.'],
+      answer: '6,13,22',
       hint: 'Remplacez les formes indicatives par l\'impératif après les conditions',
-      explanation: 'Après une condition au présent, on utilise l\'impératif pour exprimer une suggestion ou un conseil, pas l\'indicatif.'
+      explanation: 'Après une condition au présent, on utilise l\'impératif : "achète", "venez", "prenons".'
     }
   ],
   
@@ -78,36 +79,48 @@ const exerciseData: Record<string, Exercise[]> = {
       answer: 'Tout d\'abord,En outre,Par ailleurs,Cependant,En conclusion',
       hint: 'Organisez logiquement : introduction, arguments pour, objection, conclusion',
       explanation: 'Les articulateurs structurent le discours : d\'abord les arguments positifs, puis l\'objection, enfin la conclusion.'
+    },
+    {
+      type: 'multiple_choice',
+      prompt: 'Quels articulateurs expriment une opposition? (Sélectionnez toutes les bonnes réponses)',
+      choices: ['Cependant', 'En outre', 'Néanmoins', 'Par ailleurs', 'Pourtant', 'De plus'],
+      answer: 'Cependant,Néanmoins,Pourtant',
+      hint: 'Cherchez les mots qui introduisent une idée contraire',
+      explanation: 'Les articulateurs d\'opposition sont : cependant, néanmoins, pourtant.'
     }
   ],
 
   'adverbes-ment': [
     {
       type: 'transformation',
-      prompt: 'Transformez ces phrases en remplaçant les expressions par des adverbes en "-ment":',
-      text: 'Il répond avec politesse → Il répond ____. Elle travaille avec sérieux → Elle travaille ____. Nous agissons de manière prudente → Nous agissons ____. Ils parlent de façon claire → Ils parlent ____.',
+      prompt: 'Transformez ces expressions en adverbes en "-ment":',
+      text: 'avec politesse → ____  |  de manière sérieuse → ____  |  de façon prudente → ____  |  avec clarté → ____',
+      blanks: [
+        { position: 0, options: ['poliment', 'politesse', 'poli'] },
+        { position: 1, options: ['sérieusement', 'sérieuse', 'sérieux'] },
+        { position: 2, options: ['prudemment', 'prudente', 'prudent'] },
+        { position: 3, options: ['clairement', 'claire', 'clarté'] }
+      ],
       answer: 'poliment,sérieusement,prudemment,clairement',
       hint: 'Adjectif féminin + -ment (attention aux exceptions)',
-      explanation: 'Formation : adjectif au féminin + -ment. Exceptions : prudent → prudemment, violent → violemment.'
+      explanation: 'Formation : adjectif au féminin + -ment. Exceptions : prudent → prudemment.'
     }
   ],
 
   'plus-que-parfait': [
     {
       type: 'complex_text',
-      prompt: 'Complétez ce récit en utilisant les temps appropriés (plus-que-parfait, passé composé, imparfait):',
-      text: 'Hier soir, quand je ____ (arriver) au cinéma, le film ____ (déjà commencer). Mes amis m\'____ (attendre) dans le hall car ils ____ (acheter) les billets à l\'avance. Nous ____ (entrer) discrètement dans la salle qui ____ (être) déjà plongée dans l\'obscurité. Le début du film que nous ____ (rater) ____ (sembler) important pour comprendre l\'histoire.',
+      prompt: 'Complétez ce récit en utilisant les temps appropriés:',
+      text: 'Hier soir, quand je ____ (arriver) au cinéma, le film ____ (déjà commencer). Mes amis m\'____ (attendre) dans le hall car ils ____ (acheter) les billets à l\'avance. Nous ____ (entrer) discrètement dans la salle qui ____ (être) déjà plongée dans l\'obscurité.',
       blanks: [
         { position: 0, options: ['suis arrivé', 'arrivais', 'étais arrivé'] },
         { position: 1, options: ['avait déjà commencé', 'a déjà commencé', 'commençait déjà'] },
         { position: 2, options: ['attendaient', 'ont attendu', 'avaient attendu'] },
         { position: 3, options: ['achetaient', 'avaient acheté', 'ont acheté'] },
         { position: 4, options: ['sommes entrés', 'entrions', 'étions entrés'] },
-        { position: 5, options: ['était', 'a été', 'avait été'] },
-        { position: 6, options: ['avions raté', 'avons raté', 'rations'] },
-        { position: 7, options: ['semblait', 'a semblé', 'avait semblé'] }
+        { position: 5, options: ['était', 'a été', 'avait été'] }
       ],
-      answer: 'suis arrivé,avait déjà commencé,attendaient,avaient acheté,sommes entrés,était,avions raté,semblait',
+      answer: 'suis arrivé,avait déjà commencé,attendaient,avaient acheté,sommes entrés,était',
       hint: 'Plus-que-parfait = action antérieure à une autre action passée',
       explanation: 'Le plus-que-parfait exprime l\'antériorité par rapport à un autre moment du passé.'
     }
@@ -117,18 +130,16 @@ const exerciseData: Record<string, Exercise[]> = {
     {
       type: 'complex_text',
       prompt: 'Complétez avec le subjonctif ou l\'indicatif selon le contexte:',
-      text: 'Il faut que tu ____ (comprendre) cette règle. Je pense qu\'il ____ (avoir) raison. Il est nécessaire que nous ____ (finir) ce projet. Je suis sûr qu\'elle ____ (venir) demain. Il vaut mieux que vous ____ (partir) maintenant. Il est probable qu\'ils ____ (arriver) en retard.',
+      text: 'Il faut que tu ____ (comprendre) cette règle. Je pense qu\'il ____ (avoir) raison. Il est nécessaire que nous ____ (finir) ce projet. Je suis sûr qu\'elle ____ (venir) demain.',
       blanks: [
         { position: 0, options: ['comprennes', 'comprends', 'comprendras'] },
         { position: 1, options: ['ait', 'a', 'aura'] },
         { position: 2, options: ['finissions', 'finissons', 'finirons'] },
-        { position: 3, options: ['vienne', 'vient', 'viendra'] },
-        { position: 4, options: ['partez', 'partiez', 'partirez'] },
-        { position: 5, options: ['arrivent', 'arriveront', 'arrivaient'] }
+        { position: 3, options: ['vienne', 'vient', 'viendra'] }
       ],
-      answer: 'comprennes,a,finissions,viendra,partiez,arriveront',
-      hint: 'Subjonctif après les expressions d\'obligation, d\'opinion et de certitude → indicatif',
-      explanation: 'Le subjonctif s\'utilise après les expressions d\'obligation, de nécessité, mais l\'indicatif après les expressions de certitude.'
+      answer: 'comprennes,a,finissions,viendra',
+      hint: 'Subjonctif après les expressions d\'obligation, indicatif après les expressions de certitude',
+      explanation: 'Le subjonctif s\'utilise après les expressions d\'obligation, l\'indicatif après les expressions de certitude.'
     }
   ],
 
@@ -136,18 +147,27 @@ const exerciseData: Record<string, Exercise[]> = {
     {
       type: 'complex_text',
       prompt: 'Complétez avec les pronoms relatifs appropriés:',
-      text: 'Voici l\'ami ____ je t\'ai parlé. C\'est une personne ____ j\'admire beaucoup. Il travaille dans une entreprise ____ siège se trouve à Paris. C\'est quelqu\'un sur ____ on peut compter. La raison pour ____ il a déménagé reste mystérieuse. Le projet sur ____ nous travaillons est très intéressant.',
+      text: 'Voici l\'ami ____ je t\'ai parlé. C\'est une personne ____ j\'admire beaucoup. Il travaille dans une entreprise ____ le siège se trouve à Paris. C\'est quelqu\'un sur ____ on peut compter.',
       blanks: [
         { position: 0, options: ['dont', 'que', 'qui'] },
         { position: 1, options: ['que', 'qui', 'dont'] },
         { position: 2, options: ['dont', 'que', 'où'] },
-        { position: 3, options: ['qui', 'lequel', 'que'] },
-        { position: 4, options: ['laquelle', 'que', 'qui'] },
-        { position: 5, options: ['lequel', 'que', 'dont'] }
+        { position: 3, options: ['qui', 'lequel', 'que'] }
       ],
-      answer: 'dont,que,dont,qui,laquelle,lequel',
+      answer: 'dont,que,dont,qui',
       hint: 'Attention aux prépositions et aux constructions verbales',
-      explanation: 'Le choix du pronom relatif dépend de sa fonction et de la construction du verbe (direct, indirect, avec préposition).'
+      explanation: 'Le choix du pronom relatif dépend de sa fonction et de la construction du verbe.'
+    }
+  ],
+
+  'negation': [
+    {
+      type: 'multiple_choice',
+      prompt: 'Quelles sont les formes correctes de négation? (Sélectionnez toutes les bonnes réponses)',
+      choices: ['Je ne vois personne', 'Je vois ne personne', 'Il ne mange rien', 'Il mange ne rien', 'Nous ne parlons jamais', 'Nous parlons ne jamais'],
+      answer: 'Je ne vois personne,Il ne mange rien,Nous ne parlons jamais',
+      hint: 'La négation encadre le verbe conjugué',
+      explanation: 'En français, "ne" se place avant le verbe et le deuxième élément après.'
     }
   ]
 };
@@ -155,10 +175,12 @@ const exerciseData: Record<string, Exercise[]> = {
 const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps) => {
   const [currentExercise, setCurrentExercise] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
+  const [selectedWords, setSelectedWords] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
+  const [answerFeedback, setAnswerFeedback] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   const exercises = topic ? (exerciseData[topic.id] || []) : [];
@@ -166,8 +188,15 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
 
   useEffect(() => {
     if (exercise) {
-      const blanksCount = exercise.blanks?.length || exercise.choices?.length || 0;
-      setSelectedAnswers(new Array(blanksCount).fill(''));
+      if (exercise.type === 'multiple_choice') {
+        setSelectedAnswers([]);
+      } else if (exercise.type === 'error_correction') {
+        setSelectedWords([]);
+      } else {
+        const blanksCount = exercise.blanks?.length || 0;
+        setSelectedAnswers(new Array(blanksCount).fill(''));
+      }
+      setAnswerFeedback({});
     }
   }, [currentExercise, exercise]);
 
@@ -177,11 +206,49 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     setSelectedAnswers(newAnswers);
   };
 
+  const handleMultipleChoiceSelect = (choice: string) => {
+    setSelectedAnswers(prev => 
+      prev.includes(choice) 
+        ? prev.filter(a => a !== choice)
+        : [...prev, choice]
+    );
+  };
+
+  const handleWordSelect = (wordIndex: number) => {
+    setSelectedWords(prev => 
+      prev.includes(wordIndex)
+        ? prev.filter(i => i !== wordIndex)
+        : [...prev, wordIndex]
+    );
+  };
+
   const handleAnswerSubmit = () => {
     if (!exercise) return;
     
-    const userAnswer = selectedAnswers.join(',');
-    const correct = userAnswer === exercise.answer;
+    let userAnswer = '';
+    let correct = false;
+
+    if (exercise.type === 'multiple_choice') {
+      userAnswer = selectedAnswers.sort().join(',');
+      correct = userAnswer === exercise.answer;
+      
+      // Create feedback for each choice
+      const correctAnswers = exercise.answer.split(',');
+      const feedback: {[key: string]: boolean} = {};
+      exercise.choices?.forEach(choice => {
+        if (selectedAnswers.includes(choice)) {
+          feedback[choice] = correctAnswers.includes(choice);
+        }
+      });
+      setAnswerFeedback(feedback);
+    } else if (exercise.type === 'error_correction') {
+      userAnswer = selectedWords.sort((a, b) => a - b).join(',');
+      correct = userAnswer === exercise.answer;
+    } else {
+      userAnswer = selectedAnswers.join(',');
+      correct = userAnswer === exercise.answer;
+    }
+
     setIsCorrect(correct);
     setShowResult(true);
 
@@ -204,8 +271,10 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     if (currentExercise < exercises.length - 1) {
       setCurrentExercise(currentExercise + 1);
       setSelectedAnswers([]);
+      setSelectedWords([]);
       setShowResult(false);
       setShowHint(false);
+      setAnswerFeedback({});
     } else {
       if (topic) {
         const finalScore = Math.round((score / (exercises.length * 25)) * 100);
@@ -220,6 +289,99 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
 
   const renderExercise = () => {
     if (!exercise) return null;
+
+    if (exercise.type === 'multiple_choice') {
+      return (
+        <div className="space-y-6">
+          <div className="text-lg font-medium text-gray-900 mb-4">
+            {exercise.prompt}
+          </div>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {exercise.choices?.map((choice, index) => {
+              const isSelected = selectedAnswers.includes(choice);
+              const isCorrectChoice = exercise.answer.split(',').includes(choice);
+              const showFeedback = showResult && isSelected;
+              
+              return (
+                <div
+                  key={index}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    isSelected
+                      ? showFeedback
+                        ? answerFeedback[choice]
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                        : 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => !showResult && handleMultipleChoiceSelect(choice)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      isSelected
+                        ? showFeedback
+                          ? answerFeedback[choice]
+                            ? 'border-green-500 bg-green-500'
+                            : 'border-red-500 bg-red-500'
+                          : 'border-blue-500 bg-blue-500'
+                        : 'border-gray-300'
+                    }`}>
+                      {isSelected && (
+                        showFeedback
+                          ? answerFeedback[choice]
+                            ? <Check className="w-3 h-3 text-white" />
+                            : <X className="w-3 h-3 text-white" />
+                          : <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <span className="font-medium">{choice}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (exercise.type === 'error_correction') {
+      return (
+        <div className="space-y-6">
+          <div className="text-lg font-medium text-gray-900 mb-4">
+            {exercise.prompt}
+          </div>
+          
+          <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
+            <div className="text-base leading-relaxed flex flex-wrap gap-2">
+              {exercise.words?.map((word, index) => {
+                const isSelected = selectedWords.includes(index);
+                const isCorrectError = exercise.answer.split(',').includes(index.toString());
+                const showFeedback = showResult && isSelected;
+                
+                return (
+                  <span
+                    key={index}
+                    className={`px-2 py-1 rounded cursor-pointer transition-all ${
+                      isSelected
+                        ? showFeedback
+                          ? isCorrectError
+                            ? 'bg-green-200 text-green-800'
+                            : 'bg-red-200 text-red-800'
+                          : 'bg-blue-200 text-blue-800'
+                        : 'hover:bg-gray-200'
+                    }`}
+                    onClick={() => !showResult && handleWordSelect(index)}
+                  >
+                    {word}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (exercise.type === 'complex_text' && exercise.blanks) {
       const textParts = exercise.text?.split('____') || [];
@@ -273,6 +435,16 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     );
   };
 
+  const canSubmit = () => {
+    if (exercise.type === 'multiple_choice') {
+      return selectedAnswers.length > 0;
+    } else if (exercise.type === 'error_correction') {
+      return selectedWords.length > 0;
+    } else {
+      return selectedAnswers.every(answer => answer !== '');
+    }
+  };
+
   if (!topic || !exercise) {
     return (
       <div className="text-center py-12">
@@ -319,7 +491,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <Book className="w-5 h-5" />
-            Exercice {currentExercise + 1} - Texte complexe
+            Exercice {currentExercise + 1} - {exercise.type === 'multiple_choice' ? 'Choix multiples' : exercise.type === 'error_correction' ? 'Correction d\'erreurs' : 'Texte complexe'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -374,7 +546,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
               {!showResult ? (
                 <Button 
                   onClick={handleAnswerSubmit}
-                  disabled={selectedAnswers.some(answer => !answer)}
+                  disabled={!canSubmit()}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   Vérifier
