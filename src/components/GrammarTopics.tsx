@@ -1,9 +1,8 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Arrow, Check, Star } from 'lucide-react';
+import { ArrowRight, Check, Star } from 'lucide-react';
 
 interface Topic {
   id: string;
@@ -242,7 +241,7 @@ const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
                       {topic.description}
                     </CardDescription>
                   </div>
-                  <Arrow className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                 </div>
               </CardHeader>
 

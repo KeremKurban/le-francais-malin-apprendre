@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Arrow, Check, Circle, Book } from 'lucide-react';
+import { ArrowLeft, Check, Circle, Book } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Topic {
@@ -279,7 +278,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
       <div className="text-center py-12">
         <p className="text-lg text-gray-600">Aucun exercice disponible pour ce sujet.</p>
         <Button onClick={onBack} className="mt-4">
-          <Arrow className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
         </Button>
       </div>
@@ -291,7 +290,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack}>
-          <Arrow className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
         </Button>
         
