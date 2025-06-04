@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,8 +58,18 @@ const Index = () => {
   };
 
   const handleTopicSelect = (topic: Topic) => {
+    if (!topic) {
+      console.error('No topic selected');
+      return;
+    }
+    
+    console.log('Selected topic:', topic.id);
     setSelectedTopic(topic);
-    setCurrentView('exercise');
+    
+    // Ensure clean state transition
+    setTimeout(() => {
+      setCurrentView('exercise');
+    }, 0);
   };
 
   const handleExerciseComplete = async (

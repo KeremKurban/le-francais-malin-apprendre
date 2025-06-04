@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, Check, Star } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface Topic {
   id: string;
@@ -24,7 +24,7 @@ interface UserProgress {
 
 interface GrammarTopicsProps {
   onTopicSelect: (topic: Topic) => void;
-  userProgress: UserProgress;
+  userProgress: Record<string, UserProgress>;
 }
 
 const grammarTopics: Topic[] = [
@@ -178,22 +178,22 @@ const grammarTopics: Topic[] = [
 ];
 
 const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'A2': return 'bg-green-100 text-green-800';
-      case 'A2+': return 'bg-blue-100 text-blue-800';
-      case 'B1': return 'bg-purple-100 text-purple-800';
-      case 'B1+': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  if (!grammarTopics || grammarTopics.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg text-gray-600">Les sujets de grammaire sont en cours de chargement...</p>
+      </div>
+    );
+  }
+
+  const handleTopicClick = (topic: Topic, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Ensure we have valid topic data before navigating
+    if (topic && topic.id) {
+      console.log('Navigating to topic:', topic.id);
+      onTopicSelect(topic);
     }
-  };
-
-  const getTopicProgress = (topicId: string): number => {
-    return userProgress.topicProgress[topicId] || 0;
-  };
-
-  const isTopicCompleted = (topicId: string): boolean => {
-    return getTopicProgress(topicId) >= 80;
   };
 
   return (
@@ -209,32 +209,17 @@ const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {grammarTopics.map((topic) => {
-          const progress = getTopicProgress(topic.id);
-          const isCompleted = isTopicCompleted(topic.id);
-          
+          const progress = userProgress[topic.id]?.best_score || 0;
+
           return (
             <Card 
               key={topic.id}
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer overflow-hidden"
-              onClick={() => onTopicSelect(topic)}
+              className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group"
             >
-              <div className={`h-2 bg-gradient-to-r ${topic.color}`} />
-              
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Badge className={getDifficultyColor(topic.difficulty)}>
-                        {topic.difficulty}
-                      </Badge>
-                      {isCompleted && (
-                        <div className="flex items-center space-x-1">
-                          <Check className="w-4 h-4 text-green-600" />
-                          <Star className="w-4 h-4 text-yellow-500" />
-                        </div>
-                      )}
-                    </div>
-                    <CardTitle className="text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl text-gray-900 group-hover:text-blue-600 transition-colors">
                       {topic.title}
                     </CardTitle>
                     <CardDescription className="text-sm text-gray-600 mt-1">
@@ -261,16 +246,13 @@ const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
                 </div>
 
                 <div className="flex justify-between text-sm text-gray-600">
+                  <Badge variant="outline">{topic.difficulty}</Badge>
                   <span>{topic.exercises} exercices</span>
-                  <span>{Math.round((progress / 100) * topic.exercises)} complétés</span>
                 </div>
 
                 <Button 
                   className={`w-full bg-gradient-to-r ${topic.color} hover:opacity-90 text-white`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTopicSelect(topic);
-                  }}
+                  onClick={(e) => handleTopicClick(topic, e)}
                 >
                   {progress > 0 ? 'Continuer' : 'Commencer'}
                 </Button>

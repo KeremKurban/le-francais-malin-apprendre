@@ -1,13 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Book } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { UserManager } from '@/utils/UserManager';
 import ExerciseHeader from './exercises/ExerciseHeader';
 import ExerciseContent from './exercises/ExerciseContent';
 import ExerciseActions from './exercises/ExerciseActions';
 import { exerciseData } from '@/data/exerciseData';
+import { UserManager } from '@/utils/UserManager';
 
 interface Topic {
   id: string;
@@ -52,6 +51,33 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
   const exercises = topic ? (exerciseData[topic.id] || []) : [];
   const exercise = exercises[currentExercise];
 
+  // Reset all state when topic changes
+  useEffect(() => {
+    if (topic) {
+      console.log('Topic changed, resetting state:', topic.id);
+      setCurrentExercise(0);
+      setScore(0);
+      setMistakes([]);
+      setShowResult(false);
+      setShowHint(false);
+      setIsCorrect(false);
+      setSelectedAnswers([]);
+      setSelectedWords([]);
+      setAnswerFeedback({});
+      
+      if (exercises.length === 0) {
+        console.error('No exercises found for topic:', topic.id);
+        toast({
+          title: "Erreur",
+          description: "Aucun exercice disponible pour ce sujet.",
+          variant: "destructive"
+        });
+        onBack();
+      }
+    }
+  }, [topic, exercises.length]);
+
+  // Reset answer state when exercise changes
   useEffect(() => {
     if (exercise) {
       if (exercise.type === 'multiple_choice') {
