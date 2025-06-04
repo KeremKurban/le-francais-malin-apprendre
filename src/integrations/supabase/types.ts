@@ -9,13 +9,234 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      learning_insights: {
+        Row: {
+          created_at: string | null
+          id: string
+          priority_level: number | null
+          suggested_exercises: string[] | null
+          topic_id: string
+          user_id: string
+          weakness_pattern: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          priority_level?: number | null
+          suggested_exercises?: string[] | null
+          topic_id: string
+          user_id: string
+          weakness_pattern: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          priority_level?: number | null
+          suggested_exercises?: string[] | null
+          topic_id?: string
+          user_id?: string
+          weakness_pattern?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_insights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          level: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          level?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          level?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_data: Json | null
+          achievement_type: string
+          earned_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_data?: Json | null
+          achievement_type: string
+          earned_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_data?: Json | null
+          achievement_type?: string
+          earned_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_mistakes: {
+        Row: {
+          correct_answer: string
+          created_at: string | null
+          id: string
+          is_resolved: boolean | null
+          mistake_type: string
+          question: string
+          resolution_attempts: number | null
+          topic_id: string
+          user_answer: string
+          user_id: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          mistake_type: string
+          question: string
+          resolution_attempts?: number | null
+          topic_id: string
+          user_answer: string
+          user_id: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          mistake_type?: string
+          question?: string
+          resolution_attempts?: number | null
+          topic_id?: string
+          user_answer?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_mistakes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_progress: {
+        Row: {
+          best_score: number | null
+          id: string
+          last_practiced: string | null
+          mastery_level: number | null
+          topic_id: string
+          total_attempts: number | null
+          user_id: string
+        }
+        Insert: {
+          best_score?: number | null
+          id?: string
+          last_practiced?: string | null
+          mastery_level?: number | null
+          topic_id: string
+          total_attempts?: number | null
+          user_id: string
+        }
+        Update: {
+          best_score?: number | null
+          id?: string
+          last_practiced?: string | null
+          mastery_level?: number | null
+          topic_id?: string
+          total_attempts?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          exercises_completed: number | null
+          id: string
+          session_end: string | null
+          session_start: string | null
+          total_points: number | null
+          user_id: string
+        }
+        Insert: {
+          exercises_completed?: number | null
+          id?: string
+          session_end?: string | null
+          session_start?: string | null
+          total_points?: number | null
+          user_id: string
+        }
+        Update: {
+          exercises_completed?: number | null
+          id?: string
+          session_end?: string | null
+          session_start?: string | null
+          total_points?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_learning_progress: {
+        Args: {
+          p_user_id: string
+          p_topic_id: string
+          p_score: number
+          p_mistakes?: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

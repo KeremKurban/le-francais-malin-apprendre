@@ -1,15 +1,17 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, Flame, BookOpen } from 'lucide-react';
+import { Trophy, Star, Flame, BookOpen, LogOut } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
 import Leaderboard from '@/components/Leaderboard';
 import Mistakes from '@/components/Mistakes';
-import LoginModal from '@/components/LoginModal';
-import { UserManager, UserData } from '@/utils/UserManager';
+import { useAuth } from '@/hooks/useAuth';
+import { SupabaseUserManager, UserProfile, UserProgress } from '@/utils/SupabaseUserManager';
+import { useToast } from '@/hooks/use-toast';
 
 interface Topic {
   id: string;
@@ -24,32 +26,36 @@ interface Topic {
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [userProgress, setUserProgress] = useState<UserData | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProgress, setUserProgress] = useState<Record<string, UserProgress>>({});
+  const [loading, setLoading] = useState(true);
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user exists and handle session
-    const existingUser = UserManager.getCurrentUser();
-    
-    if (!existingUser) {
-      setShowLoginModal(true);
-    } else {
-      // Check if this is a new session (new page entry vs refresh)
-      if (UserManager.isNewSession()) {
-        // Reset progress for new session but keep user data
-        const resetUser = UserManager.resetProgressForNewSession();
-        setUserProgress(resetUser);
-      } else {
-        // Regular refresh - keep all progress
-        setUserProgress(existingUser);
-      }
-    }
-  }, []);
+    loadUserData();
+  }, [user]);
 
-  const handleLogin = (name: string) => {
-    const newUser = UserManager.createNewUser(name);
-    setUserProgress(newUser);
-    setShowLoginModal(false);
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      const [profile, progress] = await Promise.all([
+        SupabaseUserManager.getCurrentUser(),
+        SupabaseUserManager.getUserProgress()
+      ]);
+      
+      setUserProfile(profile);
+      setUserProgress(progress);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger vos données.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTopicSelect = (topic: Topic) => {
@@ -57,38 +63,61 @@ const Index = () => {
     setCurrentView('exercise');
   };
 
-  const handleExerciseComplete = (score: number, topic: Topic, mistakes?: Array<{question: string, userAnswer: string, correctAnswer: string}>) => {
-    if (!userProgress) return;
+  const handleExerciseComplete = async (
+    score: number, 
+    topic: Topic, 
+    mistakes?: Array<{question: string, userAnswer: string, correctAnswer: string}>
+  ) => {
+    try {
+      const formattedMistakes = mistakes?.map(mistake => ({
+        question: mistake.question,
+        userAnswer: mistake.userAnswer,
+        correctAnswer: mistake.correctAnswer,
+        type: 'grammar' // You can enhance this to detect the actual mistake type
+      })) || [];
 
-    // Add mistakes to user data
-    if (mistakes && mistakes.length > 0) {
-      mistakes.forEach(mistake => {
-        UserManager.addMistake({
-          topic: topic.id,
-          question: mistake.question,
-          userAnswer: mistake.userAnswer,
-          correctAnswer: mistake.correctAnswer
-        });
+      await SupabaseUserManager.updateUserProgress(topic.id, score, formattedMistakes);
+      
+      // Reload user data to show updated progress
+      await loadUserData();
+      
+      toast({
+        title: "Exercice terminé !",
+        description: `Score: ${score}% - ${mistakes?.length || 0} erreur(s)`,
+      });
+      
+      setCurrentView('dashboard');
+    } catch (error) {
+      console.error('Error updating progress:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder votre progression.",
+        variant: "destructive"
       });
     }
+  };
 
-    // Update progress
-    const updatedProgress = {
-      totalPoints: userProgress.totalPoints + score,
-      topicProgress: {
-        ...userProgress.topicProgress,
-        [topic.id]: Math.max(userProgress.topicProgress[topic.id] || 0, score)
-      }
-    };
-
-    UserManager.updateUserProgress(updatedProgress);
-    
-    setUserProgress(prev => prev ? { ...prev, ...updatedProgress } : null);
-    setCurrentView('dashboard');
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Déconnexion",
+        description: "À bientôt sur FrançaisPro !",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const renderView = () => {
-    if (!userProgress) return null;
+    if (loading) {
+      return (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Chargement...</p>
+        </div>
+      );
+    }
 
     switch (currentView) {
       case 'topics':
@@ -108,12 +137,19 @@ const Index = () => {
       case 'mistakes':
         return <Mistakes />;
       default:
-        return <DashboardView userProgress={userProgress} setCurrentView={setCurrentView} />;
+        return <DashboardView userProfile={userProfile} userProgress={userProgress} setCurrentView={setCurrentView} />;
     }
   };
 
-  if (!userProgress) {
-    return <LoginModal isOpen={showLoginModal} onLogin={handleLogin} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -128,7 +164,9 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">FrançaisPro</h1>
-                <p className="text-sm text-gray-600">Bonjour, {userProgress.name} • Niveau {userProgress.level}</p>
+                <p className="text-sm text-gray-600">
+                  Bonjour, {userProfile?.name} • Niveau {userProfile?.level}
+                </p>
               </div>
             </div>
             
@@ -172,13 +210,14 @@ const Index = () => {
 
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Flame className="w-5 h-5 text-orange-500" />
-                <span className="font-semibold text-gray-900">{userProgress.streak}</span>
-              </div>
-              <div className="flex items-center space-x-2">
                 <Star className="w-5 h-5 text-yellow-500" />
-                <span className="font-semibold text-gray-900">{userProgress.totalPoints}</span>
+                <span className="font-semibold text-gray-900">
+                  {Object.values(userProgress).reduce((sum, p) => sum + p.best_score, 0)}
+                </span>
               </div>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -239,20 +278,25 @@ const Index = () => {
 };
 
 interface DashboardViewProps {
-  userProgress: UserData;
+  userProfile: UserProfile | null;
+  userProgress: Record<string, UserProgress>;
   setCurrentView: (view: string) => void;
 }
 
-const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => {
-  const progressValues = Object.values(userProgress.topicProgress) as number[];
-  const averageProgress = progressValues.reduce((a: number, b: number) => a + b, 0) / progressValues.length;
+const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardViewProps) => {
+  const progressValues = Object.values(userProgress).map(p => p.best_score);
+  const averageProgress = progressValues.length > 0 
+    ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length 
+    : 0;
+  const totalPoints = progressValues.reduce((sum, score) => sum + score, 0);
+  const masteredTopics = Object.values(userProgress).filter(p => p.mastery_level >= 3).length;
 
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          Bonjour {userProgress.name} ! Prêt à améliorer votre français ?
+          Bonjour {userProfile?.name} ! Prêt à améliorer votre français ?
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Maîtrisez la grammaire française avec des exercices adaptatifs pour les niveaux A2/B1
@@ -266,21 +310,21 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100">Niveau actuel</p>
-                <p className="text-2xl font-bold">{userProgress.level}</p>
+                <p className="text-2xl font-bold">{userProfile?.level}</p>
               </div>
               <Trophy className="w-8 h-8 text-blue-200" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-500 to-red-500 text-white">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100">Série actuelle</p>
-                <p className="text-2xl font-bold">{userProgress.streak} jours</p>
+                <p className="text-green-100">Sujets maîtrisés</p>
+                <p className="text-2xl font-bold">{masteredTopics}</p>
               </div>
-              <Flame className="w-8 h-8 text-orange-200" />
+              <BookOpen className="w-8 h-8 text-green-200" />
             </div>
           </CardContent>
         </Card>
@@ -290,21 +334,21 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-yellow-100">Points totaux</p>
-                <p className="text-2xl font-bold">{userProgress.totalPoints}</p>
+                <p className="text-2xl font-bold">{totalPoints}</p>
               </div>
               <Star className="w-8 h-8 text-yellow-200" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100">Progrès moyen</p>
-                <p className="text-2xl font-bold">{Math.round(averageProgress || 0)}%</p>
+                <p className="text-purple-100">Progrès moyen</p>
+                <p className="text-2xl font-bold">{Math.round(averageProgress)}%</p>
               </div>
-              <BookOpen className="w-8 h-8 text-green-200" />
+              <Trophy className="w-8 h-8 text-purple-200" />
             </div>
           </CardContent>
         </Card>
@@ -367,7 +411,7 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
       </div>
 
       {/* Recent Progress */}
-      {Object.keys(userProgress.topicProgress).length > 0 && (
+      {Object.keys(userProgress).length > 0 && (
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Progrès par sujet</CardTitle>
@@ -376,15 +420,15 @@ const DashboardView = ({ userProgress, setCurrentView }: DashboardViewProps) => 
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(userProgress.topicProgress).slice(0, 5).map(([topic, progress]) => (
-              <div key={topic} className="space-y-2">
+            {Object.entries(userProgress).slice(0, 5).map(([topicId, progress]) => (
+              <div key={topicId} className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">
-                    {topic.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {topicId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </span>
-                  <span className="text-sm text-gray-500">{progress}%</span>
+                  <span className="text-sm text-gray-500">{progress.best_score}%</span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress value={progress.best_score} className="h-2" />
               </div>
             ))}
           </CardContent>

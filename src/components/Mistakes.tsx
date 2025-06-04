@@ -1,27 +1,43 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Calendar, RotateCcw, CheckCircle } from 'lucide-react';
-import { UserManager, Mistake } from '@/utils/UserManager';
+import { SupabaseUserManager, UserMistake } from '@/utils/SupabaseUserManager';
+import { useToast } from '@/hooks/use-toast';
 
 const Mistakes = () => {
-  const [mistakes, setMistakes] = useState<Mistake[]>([]);
+  const [mistakes, setMistakes] = useState<UserMistake[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const userData = UserManager.getCurrentUser();
-    if (userData) {
-      setMistakes(userData.mistakes || []);
-    }
+    loadMistakes();
   }, []);
+
+  const loadMistakes = async () => {
+    try {
+      setLoading(true);
+      const data = await SupabaseUserManager.getUserMistakes();
+      setMistakes(data);
+    } catch (error) {
+      console.error('Error loading mistakes:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger vos erreurs.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredMistakes = filter === 'all' 
     ? mistakes 
-    : mistakes.filter(mistake => mistake.topic === filter);
+    : mistakes.filter(mistake => mistake.topic_id === filter);
 
-  const uniqueTopics = [...new Set(mistakes.map(mistake => mistake.topic))];
+  const uniqueTopics = [...new Set(mistakes.map(mistake => mistake.topic_id))];
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -33,11 +49,21 @@ const Mistakes = () => {
     });
   };
 
-  const clearMistakes = () => {
-    const userData = UserManager.getCurrentUser();
-    if (userData) {
-      UserManager.updateUserProgress({ mistakes: [] });
-      setMistakes([]);
+  const markAsResolved = async (mistakeId: string) => {
+    try {
+      await SupabaseUserManager.markMistakeAsResolved(mistakeId);
+      await loadMistakes(); // Reload to show updated status
+      toast({
+        title: "Erreur marquée comme résolue",
+        description: "Continuez à pratiquer ce type d'exercice !",
+      });
+    } catch (error) {
+      console.error('Error marking mistake as resolved:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de marquer cette erreur comme résolue.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -53,6 +79,15 @@ const Mistakes = () => {
     const index = uniqueTopics.indexOf(topic) % colors.length;
     return colors[index];
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Chargement de vos erreurs...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -76,7 +111,7 @@ const Mistakes = () => {
             Toutes ({mistakes.length})
           </Button>
           {uniqueTopics.map(topic => {
-            const count = mistakes.filter(m => m.topic === topic).length;
+            const count = mistakes.filter(m => m.topic_id === topic).length;
             return (
               <Button
                 key={topic}
@@ -89,18 +124,6 @@ const Mistakes = () => {
             );
           })}
         </div>
-
-        {mistakes.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearMistakes}
-            className="text-red-600 hover:text-red-700"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Effacer l'historique
-          </Button>
-        )}
       </div>
 
       {filteredMistakes.length === 0 ? (
@@ -132,24 +155,33 @@ const Mistakes = () => {
       ) : (
         <div className="space-y-4">
           {filteredMistakes.map((mistake, index) => (
-            <Card key={mistake.id} className="border-l-4 border-l-red-400">
+            <Card key={mistake.id} className={`border-l-4 ${mistake.is_resolved ? 'border-l-green-400' : 'border-l-red-400'}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg text-gray-900">
                       Erreur #{filteredMistakes.length - index}
+                      {mistake.is_resolved && (
+                        <Badge className="ml-2 bg-green-100 text-green-800">Résolue</Badge>
+                      )}
                     </CardTitle>
                     <div className="flex items-center space-x-2">
-                      <Badge className={getTopicColor(mistake.topic)}>
-                        {mistake.topic.replace(/-/g, ' ')}
+                      <Badge className={getTopicColor(mistake.topic_id)}>
+                        {mistake.topic_id.replace(/-/g, ' ')}
                       </Badge>
                       <div className="flex items-center text-sm text-gray-500">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {formatDate(mistake.timestamp)}
+                        {formatDate(mistake.created_at)}
                       </div>
                     </div>
                   </div>
-                  <AlertCircle className="w-5 h-5 text-red-500 mt-1" />
+                  <div className="flex items-center space-x-2">
+                    {mistake.is_resolved ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               
@@ -165,17 +197,31 @@ const Mistakes = () => {
                   <div>
                     <h4 className="font-medium text-red-600 mb-2">Votre réponse :</h4>
                     <p className="text-gray-700 bg-red-50 p-3 rounded-md border border-red-200">
-                      {mistake.userAnswer}
+                      {mistake.user_answer}
                     </p>
                   </div>
                   
                   <div>
                     <h4 className="font-medium text-green-600 mb-2">Réponse correcte :</h4>
                     <p className="text-gray-700 bg-green-50 p-3 rounded-md border border-green-200">
-                      {mistake.correctAnswer}
+                      {mistake.correct_answer}
                     </p>
                   </div>
                 </div>
+
+                {!mistake.is_resolved && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => markAsResolved(mistake.id)}
+                      className="text-green-600 hover:text-green-700 border-green-600"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Marquer comme comprise
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

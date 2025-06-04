@@ -3,29 +3,29 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award, Crown } from 'lucide-react';
-import { UserManager, LeaderboardEntry } from '@/utils/UserManager';
+import { SupabaseUserManager, LeaderboardEntry } from '@/utils/SupabaseUserManager';
+import { useAuth } from '@/hooks/useAuth';
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [currentUser, setCurrentUser] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const userData = UserManager.getCurrentUser();
-    if (userData) {
-      setCurrentUser(userData.name);
-    }
-    
-    const loadLeaderboard = () => {
-      const data = UserManager.getLeaderboard();
-      setLeaderboard(data);
-    };
-
     loadLeaderboard();
-    // Refresh every 5 seconds to show live updates
-    const interval = setInterval(loadLeaderboard, 5000);
-    
-    return () => clearInterval(interval);
   }, []);
+
+  const loadLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const data = await SupabaseUserManager.getLeaderboard();
+      setLeaderboard(data);
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRankIcon = (position: number) => {
     switch (position) {
@@ -52,6 +52,15 @@ const Leaderboard = () => {
         return 'bg-gray-50 text-gray-700';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Chargement du classement...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -80,11 +89,11 @@ const Leaderboard = () => {
         <div className="space-y-4">
           {leaderboard.map((entry, index) => {
             const position = index + 1;
-            const isCurrentUser = entry.name === currentUser;
+            const isCurrentUser = entry.id === user?.id;
             
             return (
               <Card 
-                key={entry.name} 
+                key={entry.id} 
                 className={`${getRankColor(position)} ${isCurrentUser ? 'ring-4 ring-blue-400 ring-opacity-50' : ''} transition-all duration-300 hover:shadow-lg`}
               >
                 <CardContent className="p-6">
@@ -105,14 +114,14 @@ const Leaderboard = () => {
                           )}
                         </h3>
                         <p className={`text-sm ${position <= 3 ? 'text-white/80' : 'text-gray-500'}`}>
-                          Niveau {entry.level} • {entry.completedTopics} sujets maîtrisés
+                          Niveau {entry.level} • {entry.mastered_topics} sujets maîtrisés
                         </p>
                       </div>
                     </div>
                     
                     <div className="text-right">
                       <div className={`text-2xl font-bold ${position <= 3 ? 'text-white' : 'text-gray-900'}`}>
-                        {entry.totalPoints}
+                        {entry.total_score}
                       </div>
                       <p className={`text-sm ${position <= 3 ? 'text-white/80' : 'text-gray-500'}`}>
                         points
