@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ interface ExerciseInterfaceProps {
   onBack: () => void;
 }
 
-// Enhanced exercise data with more interactive exercises for all topics
+// Enhanced exercise data with exercises for all topics
 const exerciseData: Record<string, Exercise[]> = {
   'si-present-imperatif': [
     {
@@ -61,6 +62,78 @@ const exerciseData: Record<string, Exercise[]> = {
       answer: '6,13,22',
       hint: 'Remplacez les formes indicatives par l\'impératif après les conditions',
       explanation: 'Après une condition au présent, on utilise l\'impératif : "achète", "venez", "prenons".'
+    }
+  ],
+
+  'si-present-futur': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec si + présent + futur simple:',
+      text: 'Si tu ____ (étudier) régulièrement, tu ____ (réussir) tes examens. Si nous ____ (partir) maintenant, nous ____ (arriver) à l\'heure. Si elle ____ (venir) demain, je ____ (être) très content.',
+      blanks: [
+        { position: 0, options: ['étudies', 'étudieras', 'étudiais'] },
+        { position: 1, options: ['réussiras', 'réussis', 'réussirais'] },
+        { position: 2, options: ['partons', 'partirons', 'partions'] },
+        { position: 3, options: ['arriverons', 'arrivons', 'arriverions'] },
+        { position: 4, options: ['vient', 'viendra', 'venait'] },
+        { position: 5, options: ['serai', 'suis', 'serais'] }
+      ],
+      answer: 'étudies,réussiras,partons,arriverons,vient,serai',
+      hint: 'Si + présent, puis futur simple pour exprimer une conséquence',
+      explanation: 'La structure "si + présent + futur" exprime une condition et sa conséquence probable.'
+    },
+    {
+      type: 'multiple_choice',
+      prompt: 'Quelles phrases utilisent correctement si + présent + futur?',
+      choices: ['Si il pleut, je resterai à la maison', 'Si tu viendras, nous serons contents', 'Si nous partons tôt, nous arriverons à temps', 'Si elle aura le temps, elle nous aidera'],
+      answer: 'Si il pleut, je resterai à la maison,Si nous partons tôt, nous arriverons à temps',
+      hint: 'Présent après "si", futur dans la principale',
+      explanation: 'On utilise le présent après "si" et le futur dans la proposition principale.'
+    }
+  ],
+
+  'temps-passe': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez ce récit avec les temps du passé appropriés:',
+      text: 'Hier, Marie ____ (se promener) dans le parc quand elle ____ (entendre) un bruit étrange. Elle ____ (s\'arrêter) et ____ (regarder) autour d\'elle. Un chat ____ (sortir) des buissons. Marie ____ (sourire) car elle ____ (avoir) peur pour rien.',
+      blanks: [
+        { position: 0, options: ['se promenait', 's\'est promenée', 's\'était promenée'] },
+        { position: 1, options: ['a entendu', 'entendait', 'avait entendu'] },
+        { position: 2, options: ['s\'arrêtait', 's\'est arrêtée', 's\'était arrêtée'] },
+        { position: 3, options: ['regardait', 'a regardé', 'avait regardé'] },
+        { position: 4, options: ['sortait', 'est sorti', 'était sorti'] },
+        { position: 5, options: ['souriait', 'a souri', 'avait souri'] },
+        { position: 6, options: ['avait eu', 'a eu', 'avait'] }
+      ],
+      answer: 'se promenait,a entendu,s\'est arrêtée,a regardé,est sorti,a souri,avait eu',
+      hint: 'Imparfait pour le décor, passé composé pour les actions, plus-que-parfait pour l\'antériorité',
+      explanation: 'L\'imparfait décrit le contexte, le passé composé les actions principales, le plus-que-parfait l\'antériorité.'
+    },
+    {
+      type: 'multiple_choice',
+      prompt: 'Quels temps expriment une action terminée dans le passé?',
+      choices: ['Imparfait', 'Passé composé', 'Plus-que-parfait', 'Présent'],
+      answer: 'Passé composé,Plus-que-parfait',
+      hint: 'Cherchez les temps qui marquent l\'aspect accompli',
+      explanation: 'Le passé composé et le plus-que-parfait expriment des actions accomplies.'
+    }
+  ],
+
+  'conditionnel': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec le conditionnel approprié:',
+      text: 'À ta place, je ____ (partir) plus tôt. ____ (pouvoir)-vous m\'aider ? Nous ____ (aimer) visiter ce musée. Il ____ (falloir) que tu études davantage.',
+      blanks: [
+        { position: 0, options: ['partirais', 'partirai', 'partais'] },
+        { position: 1, options: ['Pourriez', 'Pouvez', 'Pouviez'] },
+        { position: 2, options: ['aimerions', 'aimerons', 'aimions'] },
+        { position: 3, options: ['faudrait', 'faudra', 'fallait'] }
+      ],
+      answer: 'partirais,Pourriez,aimerions,faudrait',
+      hint: 'Le conditionnel exprime la politesse, le souhait, le conseil',
+      explanation: 'Le conditionnel sert à exprimer la politesse, les souhaits et les conseils.'
     }
   ],
   
@@ -92,7 +165,7 @@ const exerciseData: Record<string, Exercise[]> = {
 
   'adverbes-ment': [
     {
-      type: 'transformation',
+      type: 'complex_text',
       prompt: 'Transformez ces expressions en adverbes en "-ment":',
       text: 'avec politesse → ____  |  de manière sérieuse → ____  |  de façon prudente → ____  |  avec clarté → ____',
       blanks: [
@@ -104,6 +177,33 @@ const exerciseData: Record<string, Exercise[]> = {
       answer: 'poliment,sérieusement,prudemment,clairement',
       hint: 'Adjectif féminin + -ment (attention aux exceptions)',
       explanation: 'Formation : adjectif au féminin + -ment. Exceptions : prudent → prudemment.'
+    },
+    {
+      type: 'multiple_choice',
+      prompt: 'Quels adverbes sont correctement formés?',
+      choices: ['rapidement', 'facilement', 'gentillement', 'vraiment'],
+      answer: 'rapidement,facilement,vraiment',
+      hint: 'Attention aux doubles consonnes',
+      explanation: 'On dit "gentiment" (pas gentillement). Les autres sont corrects.'
+    }
+  ],
+
+  'hypothese-si': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec si + imparfait + conditionnel:',
+      text: 'Si j\' ____ (être) riche, j\' ____ (acheter) une grande maison. Si tu ____ (avoir) plus de temps, que ____ (faire)-tu ? Si nous ____ (habiter) près de la mer, nous ____ (se baigner) tous les jours.',
+      blanks: [
+        { position: 0, options: ['étais', 'suis', 'serais'] },
+        { position: 1, options: ['achèterais', 'achète', 'achèterai'] },
+        { position: 2, options: ['avais', 'as', 'aurais'] },
+        { position: 3, options: ['ferais', 'fais', 'feras'] },
+        { position: 4, options: ['habitions', 'habitons', 'habiterions'] },
+        { position: 5, options: ['nous baignerions', 'nous baignons', 'nous baignerons'] }
+      ],
+      answer: 'étais,achèterais,avais,ferais,habitions,nous baignerions',
+      hint: 'Si + imparfait, conditionnel pour exprimer l\'hypothèse',
+      explanation: 'Pour une hypothèse irréelle au présent : si + imparfait + conditionnel présent.'
     }
   ],
 
@@ -126,6 +226,75 @@ const exerciseData: Record<string, Exercise[]> = {
     }
   ],
 
+  'questions-formelles': [
+    {
+      type: 'complex_text',
+      prompt: 'Transformez ces questions familières en questions formelles:',
+      text: 'Tu peux m\'aider ? → ____ -vous m\'aider ? | Vous venez quand ? → Quand ____ -vous ? | Qu\'est-ce que vous faites ? → Que ____ -vous ?',
+      blanks: [
+        { position: 0, options: ['Pouvez', 'Pourriez', 'Pouviez'] },
+        { position: 1, options: ['venez', 'viendrez', 'veniez'] },
+        { position: 2, options: ['faites', 'ferez', 'feriez'] }
+      ],
+      answer: 'Pourriez,venez,faites',
+      hint: 'Utilisez l\'inversion du sujet et les formes polies',
+      explanation: 'Les questions formelles utilisent l\'inversion verbe-sujet et des formes de politesse.'
+    }
+  ],
+
+  'adjectifs-indefinis': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec les adjectifs indéfinis appropriés:',
+      text: '____ les étudiants ont réussi l\'examen. ____ personnes sont venues à la réunion. J\'ai lu ____ livres intéressants. ____ problèmes restent à résoudre.',
+      blanks: [
+        { position: 0, options: ['Tous', 'Quelques', 'Certains'] },
+        { position: 1, options: ['Plusieurs', 'Toutes', 'Quelques'] },
+        { position: 2, options: ['quelques', 'tous', 'certains'] },
+        { position: 3, options: ['Certains', 'Tous', 'Quelques'] }
+      ],
+      answer: 'Tous,Plusieurs,quelques,Certains',
+      hint: 'Attention aux accords et au sens de chaque adjectif',
+      explanation: 'Chaque adjectif indéfini a un sens précis : tous (totalité), plusieurs (quantité), quelques (petit nombre), certains (une partie).'
+    }
+  ],
+
+  'superlatif': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec le superlatif approprié:',
+      text: 'C\'est ____ livre ____ intéressant de la bibliothèque. Marie est ____ étudiante ____ travailleuse de la classe. Ce restaurant sert ____ plats ____ délicieux de la ville.',
+      blanks: [
+        { position: 0, options: ['le', 'la', 'les'] },
+        { position: 1, options: ['le plus', 'la plus', 'les plus'] },
+        { position: 2, options: ['la', 'le', 'l\''] },
+        { position: 3, options: ['la plus', 'le plus', 'les plus'] },
+        { position: 4, options: ['les', 'le', 'la'] },
+        { position: 5, options: ['les plus', 'le plus', 'la plus'] }
+      ],
+      answer: 'le,le plus,la,la plus,les,les plus',
+      hint: 'Accord de l\'article avec le nom qualifié',
+      explanation: 'Le superlatif s\'accorde avec le nom : le/la/les + plus/moins + adjectif.'
+    }
+  ],
+
+  'pronoms-cod-coi': [
+    {
+      type: 'complex_text',
+      prompt: 'Remplacez les compléments par les pronoms appropriés:',
+      text: 'Je donne le livre à Marie → Je ____ ____ donne. | Nous regardons les photos → Nous ____ regardons. | Il parle à ses parents → Il ____ parle.',
+      blanks: [
+        { position: 0, options: ['le', 'la', 'lui'] },
+        { position: 1, options: ['lui', 'la', 'le'] },
+        { position: 2, options: ['les', 'leur', 'en'] },
+        { position: 3, options: ['leur', 'les', 'y'] }
+      ],
+      answer: 'le,lui,les,leur',
+      hint: 'COD avant COI, attention aux personnes et aux choses',
+      explanation: 'Le/la/les (COD), lui/leur (COI personnes), y/en (COI choses/lieux).'
+    }
+  ],
+
   'subjonctif-obligation': [
     {
       type: 'complex_text',
@@ -140,6 +309,23 @@ const exerciseData: Record<string, Exercise[]> = {
       answer: 'comprennes,a,finissions,viendra',
       hint: 'Subjonctif après les expressions d\'obligation, indicatif après les expressions de certitude',
       explanation: 'Le subjonctif s\'utilise après les expressions d\'obligation, l\'indicatif après les expressions de certitude.'
+    }
+  ],
+
+  'marqueurs-temporels': [
+    {
+      type: 'complex_text',
+      prompt: 'Complétez avec les marqueurs temporels appropriés:',
+      text: 'Je l\'ai vu ____ trois jours. J\'habite ici ____ 2020. Le cours dure ____ deux heures. Je partirai ____ une semaine.',
+      blanks: [
+        { position: 0, options: ['il y a', 'depuis', 'pendant'] },
+        { position: 1, options: ['depuis', 'il y a', 'dans'] },
+        { position: 2, options: ['pendant', 'depuis', 'il y a'] },
+        { position: 3, options: ['dans', 'depuis', 'il y a'] }
+      ],
+      answer: 'il y a,depuis,pendant,dans',
+      hint: 'Il y a (passé), depuis (durée qui continue), pendant (durée limitée), dans (futur)',
+      explanation: 'Il y a = moment passé, depuis = durée continue, pendant = durée définie, dans = moment futur.'
     }
   ],
 
@@ -168,6 +354,19 @@ const exerciseData: Record<string, Exercise[]> = {
       answer: 'Je ne vois personne,Il ne mange rien,Nous ne parlons jamais',
       hint: 'La négation encadre le verbe conjugué',
       explanation: 'En français, "ne" se place avant le verbe et le deuxième élément après.'
+    },
+    {
+      type: 'complex_text',
+      prompt: 'Transformez ces phrases à la forme négative:',
+      text: 'Il mange toujours → Il ne mange ____. | Elle voit quelqu\'un → Elle ne voit ____. | Nous faisons quelque chose → Nous ne faisons ____.',
+      blanks: [
+        { position: 0, options: ['jamais', 'plus', 'rien'] },
+        { position: 1, options: ['personne', 'rien', 'jamais'] },
+        { position: 2, options: ['rien', 'personne', 'plus'] }
+      ],
+      answer: 'jamais,personne,rien',
+      hint: 'toujours ↔ jamais, quelqu\'un ↔ personne, quelque chose ↔ rien',
+      explanation: 'Chaque mot positif a son équivalent négatif : toujours/jamais, quelqu\'un/personne, quelque chose/rien.'
     }
   ]
 };
