@@ -1,9 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Check, X, RotateCcw } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Book } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { UserManager } from '@/utils/UserManager';
+import ExerciseHeader from './exercises/ExerciseHeader';
+import ExerciseContent from './exercises/ExerciseContent';
+import ExerciseActions from './exercises/ExerciseActions';
+import { exerciseData } from '@/data/exerciseData';
 
 interface Topic {
   id: string;
@@ -15,232 +19,221 @@ interface Topic {
   color: string;
 }
 
-interface ExerciseInterfaceProps {
-  topic: Topic | null;
-  onComplete: (score: number, topic: Topic, mistakes?: Array<{question: string, userAnswer: string, correctAnswer: string}>) => void;
-  onBack: () => void;
+interface Exercise {
+  type: string;
+  prompt: string;
+  text?: string;
+  choices?: string[];
+  words?: string[];
+  answer: string;
+  hint: string;
+  explanation: string;
+  blanks?: { position: number; options: string[] }[];
 }
 
-interface Exercise {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  explanation: string;
+interface ExerciseInterfaceProps {
+  topic: Topic | null;
+  onComplete: (score: number, topic: Topic) => void;
+  onBack: () => void;
 }
 
 const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps) => {
   const [currentExercise, setCurrentExercise] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
+  const [selectedWords, setSelectedWords] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
+  const [answerFeedback, setAnswerFeedback] = useState<{[key: string]: boolean}>({});
   const [mistakes, setMistakes] = useState<Array<{question: string, userAnswer: string, correctAnswer: string}>>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const { toast } = useToast();
+
+  const exercises = topic ? (exerciseData[topic.id] || []) : [];
+  const exercise = exercises[currentExercise];
 
   useEffect(() => {
-    if (topic) {
-      generateExercises();
-    }
-  }, [topic]);
-
-  const generateExercises = () => {
-    // Generate sample exercises based on topic
-    const sampleExercises: Exercise[] = [
-      {
-        id: '1',
-        question: `Choisissez la bonne réponse pour: "__ livre est sur la table"`,
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'Le',
-        explanation: 'On utilise "le" devant un nom masculin singulier.'
-      },
-      {
-        id: '2',
-        question: `Complétez: "__ enfants jouent dans le parc"`,
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'Les',
-        explanation: 'On utilise "les" devant un nom pluriel.'
-      },
-      {
-        id: '3',
-        question: `Choisissez: "__ eau est froide"`,
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'L\'',
-        explanation: 'On utilise "l\'" devant un nom commençant par une voyelle.'
-      },
-      {
-        id: '4',
-        question: `Complétez: "__ maison est grande"`,
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'La',
-        explanation: 'On utilise "la" devant un nom féminin singulier.'
-      },
-      {
-        id: '5',
-        question: `Choisissez: "__ voitures sont rapides"`,
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'Les',
-        explanation: 'On utilise "les" devant un nom pluriel.'
+    if (exercise) {
+      if (exercise.type === 'multiple_choice') {
+        setSelectedAnswers([]);
+      } else if (exercise.type === 'error_correction') {
+        setSelectedWords([]);
+      } else {
+        const blanksCount = exercise.blanks?.length || 0;
+        setSelectedAnswers(new Array(blanksCount).fill(''));
       }
-    ];
-    setExercises(sampleExercises);
+      setAnswerFeedback({});
+    }
+  }, [currentExercise, exercise]);
+
+  const handleAnswerSelect = (index: number, answer: string) => {
+    const newAnswers = [...selectedAnswers];
+    newAnswers[index] = answer;
+    setSelectedAnswers(newAnswers);
   };
 
-  const handleAnswerSelect = (answer: string) => {
-    setSelectedAnswer(answer);
+  const handleMultipleChoiceSelect = (choice: string) => {
+    setSelectedAnswers(prev => 
+      prev.includes(choice) 
+        ? prev.filter(a => a !== choice)
+        : [...prev, choice]
+    );
   };
 
-  const handleSubmitAnswer = () => {
-    if (!selectedAnswer) return;
+  const handleWordSelect = (wordIndex: number) => {
+    setSelectedWords(prev => 
+      prev.includes(wordIndex)
+        ? prev.filter(i => i !== wordIndex)
+        : [...prev, wordIndex]
+    );
+  };
 
-    const exercise = exercises[currentExercise];
-    const isCorrect = selectedAnswer === exercise.correctAnswer;
+  const handleAnswerSubmit = () => {
+    if (!exercise) return;
     
-    if (isCorrect) {
-      setScore(score + 1);
+    let userAnswer = '';
+    let correct = false;
+
+    if (exercise.type === 'multiple_choice') {
+      userAnswer = selectedAnswers.sort().join(',');
+      correct = userAnswer === exercise.answer;
+      
+      // Create feedback for each choice
+      const correctAnswers = exercise.answer.split(',');
+      const feedback: {[key: string]: boolean} = {};
+      exercise.choices?.forEach(choice => {
+        if (selectedAnswers.includes(choice)) {
+          feedback[choice] = correctAnswers.includes(choice);
+        }
+      });
+      setAnswerFeedback(feedback);
+    } else if (exercise.type === 'error_correction') {
+      userAnswer = selectedWords.sort((a, b) => a - b).join(',');
+      correct = userAnswer === exercise.answer;
     } else {
-      setMistakes([...mistakes, {
-        question: exercise.question,
-        userAnswer: selectedAnswer,
-        correctAnswer: exercise.correctAnswer
-      }]);
+      userAnswer = selectedAnswers.join(',');
+      correct = userAnswer === exercise.answer;
     }
 
+    setIsCorrect(correct);
     setShowResult(true);
+
+    if (correct) {
+      setScore(score + 25);
+      toast({
+        title: "Excellent !",
+        description: "Votre réponse est parfaite !",
+      });
+    } else {
+      // Log the mistake
+      const newMistake = {
+        question: exercise.prompt,
+        userAnswer: userAnswer,
+        correctAnswer: exercise.answer
+      };
+      setMistakes(prev => [...prev, newMistake]);
+      
+      toast({
+        title: "Pas tout à fait...",
+        description: "Consultez l'explication pour mieux comprendre.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNextExercise = () => {
     if (currentExercise < exercises.length - 1) {
       setCurrentExercise(currentExercise + 1);
-      setSelectedAnswer('');
+      setSelectedAnswers([]);
+      setSelectedWords([]);
       setShowResult(false);
+      setShowHint(false);
+      setAnswerFeedback({});
     } else {
-      // Exercise completed
-      const finalScore = Math.round((score / exercises.length) * 100);
-      onComplete(finalScore, topic!, mistakes);
+      if (topic) {
+        const finalScore = Math.round((score / (exercises.length * 25)) * 100);
+        
+        // Add mistakes to UserManager
+        mistakes.forEach(mistake => {
+          UserManager.addMistake({
+            topic: topic.id,
+            question: mistake.question,
+            userAnswer: mistake.userAnswer,
+            correctAnswer: mistake.correctAnswer
+          });
+        });
+        
+        onComplete(finalScore, topic);
+        toast({
+          title: "Exercices terminés !",
+          description: `Score final: ${finalScore}%`,
+        });
+      }
     }
   };
 
-  const resetExercise = () => {
-    setCurrentExercise(0);
-    setSelectedAnswer('');
-    setShowResult(false);
-    setScore(0);
-    setMistakes([]);
+  const canSubmit = () => {
+    if (exercise?.type === 'multiple_choice') {
+      return selectedAnswers.length > 0;
+    } else if (exercise?.type === 'error_correction') {
+      return selectedWords.length > 0;
+    } else {
+      return selectedAnswers.every(answer => answer !== '');
+    }
   };
 
-  if (!topic || exercises.length === 0) {
+  if (!topic || !exercise) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Chargement des exercices...</p>
+        <p className="text-lg text-gray-600">Aucun exercice disponible pour ce sujet.</p>
+        <button onClick={onBack} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">
+          Retour
+        </button>
       </div>
     );
   }
 
-  const exercise = exercises[currentExercise];
-  const progress = ((currentExercise + 1) / exercises.length) * 100;
-
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack} className="flex items-center space-x-2">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Retour</span>
-        </Button>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">{topic.title}</h2>
-          <p className="text-gray-600">
-            Exercice {currentExercise + 1} sur {exercises.length}
-          </p>
-        </div>
-        <Button variant="ghost" onClick={resetExercise} className="flex items-center space-x-2">
-          <RotateCcw className="w-4 h-4" />
-          <span>Recommencer</span>
-        </Button>
-      </div>
-
-      {/* Progress */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Progression</span>
-          <span className="text-gray-900">{Math.round(progress)}%</span>
-        </div>
-        <Progress value={progress} className="h-3" />
-      </div>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <ExerciseHeader
+        topic={topic}
+        currentExercise={currentExercise}
+        totalExercises={exercises.length}
+        score={score}
+        onBack={onBack}
+      />
 
       {/* Exercise Card */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-xl text-gray-900">
-            {exercise.question}
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Book className="w-5 h-5" />
+            Exercice {currentExercise + 1} - {exercise.type === 'multiple_choice' ? 'Choix multiples' : exercise.type === 'error_correction' ? 'Correction d\'erreurs' : 'Texte complexe'}
           </CardTitle>
         </CardHeader>
-        
         <CardContent className="space-y-6">
-          {/* Options */}
-          <div className="grid grid-cols-1 gap-3">
-            {exercise.options.map((option, index) => (
-              <Button
-                key={index}
-                variant={selectedAnswer === option ? 'default' : 'outline'}
-                className={`p-4 h-auto text-left justify-start ${
-                  showResult && option === exercise.correctAnswer
-                    ? 'bg-green-100 border-green-500 text-green-800'
-                    : showResult && selectedAnswer === option && option !== exercise.correctAnswer
-                    ? 'bg-red-100 border-red-500 text-red-800'
-                    : ''
-                }`}
-                onClick={() => !showResult && handleAnswerSelect(option)}
-                disabled={showResult}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full border-2 border-current flex items-center justify-center">
-                    {String.fromCharCode(65 + index)}
-                  </div>
-                  <span>{option}</span>
-                  {showResult && option === exercise.correctAnswer && (
-                    <Check className="w-5 h-5 ml-auto" />
-                  )}
-                  {showResult && selectedAnswer === option && option !== exercise.correctAnswer && (
-                    <X className="w-5 h-5 ml-auto" />
-                  )}
-                </div>
-              </Button>
-            ))}
-          </div>
+          <ExerciseContent
+            exercise={exercise}
+            selectedAnswers={selectedAnswers}
+            selectedWords={selectedWords}
+            showResult={showResult}
+            answerFeedback={answerFeedback}
+            onAnswerSelect={handleAnswerSelect}
+            onMultipleChoiceSelect={handleMultipleChoiceSelect}
+            onWordSelect={handleWordSelect}
+          />
 
-          {/* Explanation */}
-          {showResult && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-900 mb-2">Explication :</h4>
-              <p className="text-blue-800">{exercise.explanation}</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex justify-between">
-            <div className="text-sm text-gray-600">
-              Score actuel: {score}/{currentExercise + (showResult ? 1 : 0)}
-            </div>
-            
-            {!showResult ? (
-              <Button 
-                onClick={handleSubmitAnswer}
-                disabled={!selectedAnswer}
-                className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700"
-              >
-                Valider
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleNextExercise}
-                className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700"
-              >
-                {currentExercise < exercises.length - 1 ? 'Exercice suivant' : 'Terminer'}
-              </Button>
-            )}
-          </div>
+          <ExerciseActions
+            exercise={exercise}
+            showHint={showHint}
+            showResult={showResult}
+            isCorrect={isCorrect}
+            canSubmit={canSubmit()}
+            isLastExercise={currentExercise >= exercises.length - 1}
+            onShowHint={() => setShowHint(true)}
+            onSubmit={handleAnswerSubmit}
+            onNext={handleNextExercise}
+          />
         </CardContent>
       </Card>
     </div>
