@@ -153,7 +153,7 @@ export class SupabaseUserManager {
       .from('user_mistakes')
       .update({ 
         is_resolved: true,
-        resolution_attempts: supabase.rpc('increment_resolution_attempts', { mistake_id: mistakeId })
+        resolution_attempts: 1
       })
       .eq('id', mistakeId);
 

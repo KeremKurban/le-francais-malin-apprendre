@@ -1,8 +1,9 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, Check, Star } from 'lucide-react';
+import { BookOpen, Star, Clock, Trophy } from 'lucide-react';
+import { UserProgress } from '@/utils/SupabaseUserManager';
 
 interface Topic {
   id: string;
@@ -14,186 +15,87 @@ interface Topic {
   color: string;
 }
 
-interface UserProgress {
-  level: string;
-  streak: number;
-  totalPoints: number;
-  badges: string[];
-  topicProgress: Record<string, number>;
-}
-
 interface GrammarTopicsProps {
   onTopicSelect: (topic: Topic) => void;
-  userProgress: UserProgress;
+  userProgress: Record<string, UserProgress>;
 }
 
-const grammarTopics: Topic[] = [
-  // Original topics
+const topics: Topic[] = [
   {
-    id: 'si-present-imperatif',
-    title: 'Si + présent + impératif',
-    description: 'Exprimer une hypothèse avec des conseils',
-    example: 'Si tu as faim, mange une pomme.',
-    difficulty: 'A2',
+    id: 'le-la-les',
+    title: 'Les articles définis',
+    description: 'Maîtrisez l\'usage de le, la, les',
+    example: 'Le chat, la maison, les enfants',
+    difficulty: 'Débutant',
     exercises: 15,
-    color: 'from-blue-500 to-blue-600'
+    color: 'bg-blue-100 text-blue-800'
   },
   {
-    id: 'si-present-futur',
-    title: 'Si + présent + futur simple',
-    description: 'Exprimer une conséquence future',
-    example: 'Si tu étudies bien, tu réussiras l\'examen.',
-    difficulty: 'A2+',
-    exercises: 18,
-    color: 'from-green-500 to-green-600'
+    id: 'un-une-des',
+    title: 'Les articles indéfinis',
+    description: 'Apprenez à utiliser un, une, des',
+    example: 'Un livre, une table, des fleurs',
+    difficulty: 'Débutant',
+    exercises: 12,
+    color: 'bg-green-100 text-green-800'
   },
   {
-    id: 'temps-passe',
-    title: 'Les temps du passé',
-    description: 'Imparfait, Passé Composé, Plus-que-Parfait',
-    example: 'Quand j\'étais enfant, je jouais au football.',
-    difficulty: 'B1',
-    exercises: 25,
-    color: 'from-purple-500 to-purple-600'
-  },
-  {
-    id: 'conditionnel',
-    title: 'Le conditionnel',
-    description: 'Exprimer un souhait ou un conseil',
-    example: 'À ta place, je partirais plus tôt.',
-    difficulty: 'B1',
+    id: 'passe-compose',
+    title: 'Le passé composé',
+    description: 'Formation et usage du passé composé',
+    example: 'J\'ai mangé, il est parti',
+    difficulty: 'Intermédiaire',
     exercises: 20,
-    color: 'from-orange-500 to-orange-600'
-  },
-  
-  // New topics from user request
-  {
-    id: 'articulateurs-discours',
-    title: 'Les articulateurs du discours',
-    description: 'Structurer et organiser les idées',
-    example: 'D\'abord, ensuite, enfin, par conséquent...',
-    difficulty: 'B1',
-    exercises: 22,
-    color: 'from-teal-500 to-teal-600'
+    color: 'bg-purple-100 text-purple-800'
   },
   {
-    id: 'adverbes-ment',
-    title: 'Les adverbes en "-ment"',
-    description: 'Formation et usage des adverbes de manière',
-    example: 'Elle parle couramment français.',
-    difficulty: 'A2+',
-    exercises: 16,
-    color: 'from-cyan-500 to-cyan-600'
-  },
-  {
-    id: 'hypothese-si',
-    title: 'L\'hypothèse avec si (complexe)',
-    description: 'Si + imparfait + conditionnel',
-    example: 'Si j\'étais riche, j\'achèterais une maison.',
-    difficulty: 'B1',
-    exercises: 19,
-    color: 'from-indigo-500 to-indigo-600'
-  },
-  {
-    id: 'plus-que-parfait',
-    title: 'Le plus-que-parfait',
-    description: 'Antériorité dans le passé',
-    example: 'Il avait mangé avant de partir.',
-    difficulty: 'B1',
-    exercises: 17,
-    color: 'from-violet-500 to-violet-600'
-  },
-  {
-    id: 'questions-formelles',
-    title: 'Les questions formelles',
-    description: 'Inversion du sujet et registre soutenu',
-    example: 'Pourrions-nous vous rencontrer demain ?',
-    difficulty: 'B1',
-    exercises: 14,
-    color: 'from-pink-500 to-pink-600'
-  },
-  {
-    id: 'adjectifs-indefinis',
-    title: 'Les adjectifs indéfinis',
-    description: 'Tout, tous, quelques, plusieurs, certains',
-    example: 'Quelques personnes sont venues.',
-    difficulty: 'A2+',
+    id: 'futur-simple',
+    title: 'Le futur simple',
+    description: 'Conjugaison du futur simple',
+    example: 'Je parlerai, tu finiras',
+    difficulty: 'Intermédiaire',
     exercises: 18,
-    color: 'from-rose-500 to-rose-600'
+    color: 'bg-orange-100 text-orange-800'
   },
   {
-    id: 'superlatif',
-    title: 'Le superlatif',
-    description: 'Le plus, le moins, le mieux',
-    example: 'C\'est le livre le plus intéressant.',
-    difficulty: 'A2+',
-    exercises: 15,
-    color: 'from-amber-500 to-amber-600'
+    id: 'subjonctif',
+    title: 'Le subjonctif présent',
+    description: 'Usage et formation du subjonctif',
+    example: 'Il faut que je parte',
+    difficulty: 'Avancé',
+    exercises: 25,
+    color: 'bg-red-100 text-red-800'
   },
   {
-    id: 'pronoms-cod-coi',
-    title: 'Les pronoms COD/COI',
-    description: 'Le, la, les, lui, leur, en, y',
-    example: 'Je lui ai donné le livre.',
-    difficulty: 'B1',
-    exercises: 24,
-    color: 'from-emerald-500 to-emerald-600'
-  },
-  {
-    id: 'subjonctif-obligation',
-    title: 'Le subjonctif et l\'obligation',
-    description: 'Il faut que, il est nécessaire que',
-    example: 'Il faut que tu viennes demain.',
-    difficulty: 'B1+',
-    exercises: 21,
-    color: 'from-red-500 to-red-600'
-  },
-  {
-    id: 'marqueurs-temporels',
-    title: 'Les marqueurs temporels',
-    description: 'Il y a, pendant, depuis, dans',
-    example: 'Je l\'ai vu il y a trois jours.',
-    difficulty: 'A2+',
-    exercises: 16,
-    color: 'from-lime-500 to-lime-600'
-  },
-  {
-    id: 'pronoms-relatifs',
-    title: 'Les pronoms relatifs',
-    description: 'Qui, que, dont, où, lequel, avec qui',
-    example: 'L\'homme dont je parle est médecin.',
-    difficulty: 'B1',
-    exercises: 23,
-    color: 'from-sky-500 to-sky-600'
-  },
-  {
-    id: 'negation',
-    title: 'La négation',
-    description: 'Ne...pas, ne...plus, ne...jamais, ne...rien',
-    example: 'Je ne vois personne.',
-    difficulty: 'A2',
-    exercises: 17,
-    color: 'from-slate-500 to-slate-600'
+    id: 'accord-participe',
+    title: 'Accord du participe passé',
+    description: 'Règles d\'accord avec être et avoir',
+    example: 'Elle est venue, les livres que j\'ai lus',
+    difficulty: 'Avancé',
+    exercises: 22,
+    color: 'bg-indigo-100 text-indigo-800'
   }
 ];
 
 const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'A2': return 'bg-green-100 text-green-800';
-      case 'A2+': return 'bg-blue-100 text-blue-800';
-      case 'B1': return 'bg-purple-100 text-purple-800';
-      case 'B1+': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Débutant':
+        return 'bg-green-100 text-green-800';
+      case 'Intermédiaire':
+        return 'bg-orange-100 text-orange-800';
+      case 'Avancé':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getTopicProgress = (topicId: string): number => {
-    return userProgress.topicProgress[topicId] || 0;
-  };
-
-  const isTopicCompleted = (topicId: string): boolean => {
-    return getTopicProgress(topicId) >= 80;
+  const getMasteryIcon = (masteryLevel: number) => {
+    if (masteryLevel >= 3) return <Trophy className="w-5 h-5 text-yellow-500" />;
+    if (masteryLevel >= 2) return <Star className="w-5 h-5 text-blue-500" />;
+    if (masteryLevel >= 1) return <BookOpen className="w-5 h-5 text-green-500" />;
+    return <Clock className="w-5 h-5 text-gray-400" />;
   };
 
   return (
@@ -203,77 +105,72 @@ const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
           Sujets de grammaire
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Choisissez un sujet pour commencer vos exercices adaptatifs avec des textes longs et complexes
+          Explorez les concepts grammaticaux essentiels du français
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {grammarTopics.map((topic) => {
-          const progress = getTopicProgress(topic.id);
-          const isCompleted = isTopicCompleted(topic.id);
-          
+        {topics.map((topic) => {
+          const progress = userProgress[topic.id];
+          const score = progress?.best_score || 0;
+          const masteryLevel = progress?.mastery_level || 0;
+          const attempts = progress?.total_attempts || 0;
+
           return (
             <Card 
               key={topic.id}
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer overflow-hidden"
+              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105"
               onClick={() => onTopicSelect(topic)}
             >
-              <div className={`h-2 bg-gradient-to-r ${topic.color}`} />
-              
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
+                  <div className="space-y-2">
+                    <CardTitle className="text-lg text-gray-900">{topic.title}</CardTitle>
+                    <div className="flex items-center space-x-2">
                       <Badge className={getDifficultyColor(topic.difficulty)}>
                         {topic.difficulty}
                       </Badge>
-                      {isCompleted && (
-                        <div className="flex items-center space-x-1">
-                          <Check className="w-4 h-4 text-green-600" />
-                          <Star className="w-4 h-4 text-yellow-500" />
-                        </div>
-                      )}
+                      {getMasteryIcon(masteryLevel)}
                     </div>
-                    <CardTitle className="text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {topic.title}
-                    </CardTitle>
-                    <CardDescription className="text-sm text-gray-600 mt-1">
-                      {topic.description}
-                    </CardDescription>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                 </div>
               </CardHeader>
-
+              
               <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-700 italic">
-                    Exemple : "{topic.example}"
+                <CardDescription className="text-gray-600">
+                  {topic.description}
+                </CardDescription>
+                
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Exemple:</span> {topic.example}
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Progrès</span>
-                    <span className="font-medium text-gray-900">{progress}%</span>
+                {attempts > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Meilleur score</span>
+                      <span className="font-medium text-gray-900">{score}%</span>
+                    </div>
+                    <Progress value={score} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {attempts} tentative{attempts > 1 ? 's' : ''}
+                    </p>
                   </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
+                )}
 
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>{topic.exercises} exercices</span>
-                  <span>{Math.round((progress / 100) * topic.exercises)} complétés</span>
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span className="flex items-center">
+                    <BookOpen className="w-4 h-4 mr-1" />
+                    {topic.exercises} exercices
+                  </span>
+                  {score > 0 && (
+                    <span className="text-green-600 font-medium">
+                      {masteryLevel >= 3 ? 'Maîtrisé' : masteryLevel >= 2 ? 'Bon niveau' : 'En cours'}
+                    </span>
+                  )}
                 </div>
-
-                <Button 
-                  className={`w-full bg-gradient-to-r ${topic.color} hover:opacity-90 text-white`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTopicSelect(topic);
-                  }}
-                >
-                  {progress > 0 ? 'Continuer' : 'Commencer'}
-                </Button>
               </CardContent>
             </Card>
           );
