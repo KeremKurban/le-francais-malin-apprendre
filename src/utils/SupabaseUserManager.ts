@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfile {
@@ -158,6 +157,72 @@ export class SupabaseUserManager {
       .eq('id', mistakeId);
 
     if (error) throw error;
+  }
+
+  // Fetch user badges (achievements) from user_achievements table
+  static async getUserBadges(): Promise<string[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: achievements } = await supabase
+      .from('user_achievements')
+      .select('achievement_type')
+      .eq('user_id', user.id);
+
+    return achievements ? achievements.map((a: any) => a.achievement_type) : [];
+  }
+
+  // Add a new badge (achievement) for the user
+  static async addUserBadge(achievementType: string, achievementData: any = null): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('user_achievements')
+      .insert({
+        user_id: user.id,
+        achievement_type: achievementType,
+        achievement_data: achievementData,
+        earned_at: new Date().toISOString(),
+      });
+    if (error) throw error;
+  }
+
+  // Fetch user session stats (total points, streak, etc.)
+  static async getUserSessionStats(): Promise<{ totalPoints: number; streak: number }> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { totalPoints: 0, streak: 0 };
+
+    // Get all sessions for the user
+    const { data: sessions } = await supabase
+      .from('user_sessions')
+      .select('session_start, total_points')
+      .eq('user_id', user.id)
+      .order('session_start', { ascending: false });
+
+    let streak = 0;
+    let lastDate: Date | null = null;
+    let totalPoints = 0;
+    if (sessions && sessions.length > 0) {
+      totalPoints = sessions.reduce((sum: number, s: any) => sum + (s.total_points || 0), 0);
+      for (const session of sessions) {
+        if (!session.session_start) continue;
+        const sessionDate = new Date(session.session_start.split('T')[0]);
+        if (!lastDate) {
+          streak = 1;
+          lastDate = sessionDate;
+        } else {
+          const diff = (lastDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24);
+          if (diff === 1) {
+            streak++;
+            lastDate = sessionDate;
+          } else if (diff > 1) {
+            break;
+          }
+        }
+      }
+    }
+    return { totalPoints, streak };
   }
 }
 

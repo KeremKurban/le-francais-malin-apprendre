@@ -140,7 +140,18 @@ const Index = () => {
           />
         );
       case 'progress':
-        return <ProgressDashboard userProgress={userProgress} />;
+        // Merge userProfile and userProgress for ProgressDashboard
+        if (!userProfile) return null;
+        const progressDashboardData = {
+          ...userProfile,
+          totalPoints: Object.values(userProgress).reduce((sum, p) => sum + (p.best_score || 0), 0),
+          badges: [], // You can replace this with real badge logic if available
+          streak: 0, // You can replace this with real streak logic if available
+          topicProgress: Object.fromEntries(
+            Object.entries(userProgress).map(([topicId, progress]) => [topicId, progress.best_score || 0])
+          )
+        };
+        return <ProgressDashboard userProgress={progressDashboardData} />;
       case 'leaderboard':
         return <Leaderboard />;
       case 'mistakes':
