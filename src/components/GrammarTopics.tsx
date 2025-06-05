@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowRight } from 'lucide-react';
+import { UserProgress } from '@/utils/SupabaseUserManager';
 
 interface Topic {
   id: string;
@@ -12,14 +13,6 @@ interface Topic {
   difficulty: string;
   exercises: number;
   color: string;
-}
-
-interface UserProgress {
-  level: string;
-  streak: number;
-  totalPoints: number;
-  badges: string[];
-  topicProgress: Record<string, number>;
 }
 
 interface GrammarTopicsProps {
