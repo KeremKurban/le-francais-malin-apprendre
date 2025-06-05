@@ -1,19 +1,22 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Calendar, RotateCcw, CheckCircle } from 'lucide-react';
+import { AlertCircle, Calendar, RotateCcw, CheckCircle, TrendingUp, Target } from 'lucide-react';
 import { SupabaseUserManager, UserMistake } from '@/utils/SupabaseUserManager';
 import { useToast } from '@/hooks/use-toast';
 
 const Mistakes = () => {
   const [mistakes, setMistakes] = useState<UserMistake[]>([]);
+  const [personalizedMistakes, setPersonalizedMistakes] = useState<UserMistake[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadMistakes();
+    loadPersonalizedMistakes();
   }, []);
 
   const loadMistakes = async () => {
@@ -30,6 +33,15 @@ const Mistakes = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPersonalizedMistakes = async () => {
+    try {
+      const data = await SupabaseUserManager.getPersonalizedMistakes(5);
+      setPersonalizedMistakes(data);
+    } catch (error) {
+      console.error('Error loading personalized mistakes:', error);
     }
   };
 
@@ -53,6 +65,7 @@ const Mistakes = () => {
     try {
       await SupabaseUserManager.markMistakeAsResolved(mistakeId);
       await loadMistakes(); // Reload to show updated status
+      await loadPersonalizedMistakes(); // Update personalized recommendations
       toast({
         title: "Erreur marquée comme résolue",
         description: "Continuez à pratiquer ce type d'exercice !",
@@ -80,6 +93,17 @@ const Mistakes = () => {
     return colors[index];
   };
 
+  const getMistakeStats = () => {
+    const totalMistakes = mistakes.length;
+    const resolvedMistakes = mistakes.filter(m => m.is_resolved).length;
+    const unresolvedMistakes = totalMistakes - resolvedMistakes;
+    const resolutionRate = totalMistakes > 0 ? Math.round((resolvedMistakes / totalMistakes) * 100) : 0;
+
+    return { totalMistakes, resolvedMistakes, unresolvedMistakes, resolutionRate };
+  };
+
+  const stats = getMistakeStats();
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -93,14 +117,104 @@ const Mistakes = () => {
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          Historique des erreurs
+          Analyse des erreurs
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Analysez vos erreurs pour mieux progresser
+          Analysez vos erreurs pour mieux progresser et maîtriser le français
         </p>
       </div>
 
-      {/* Filter and Stats */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-red-500 to-red-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-red-100">Total erreurs</p>
+                <p className="text-2xl font-bold">{stats.totalMistakes}</p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-red-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100">Résolues</p>
+                <p className="text-2xl font-bold">{stats.resolvedMistakes}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-orange-500 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-yellow-100">À revoir</p>
+                <p className="text-2xl font-bold">{stats.unresolvedMistakes}</p>
+              </div>
+              <Target className="w-8 h-8 text-yellow-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100">Taux résolution</p>
+                <p className="text-2xl font-bold">{stats.resolutionRate}%</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-purple-200" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Personalized Recommendations */}
+      {personalizedMistakes.length > 0 && (
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900 flex items-center gap-2">
+              <Target className="w-5 h-5 text-blue-600" />
+              Recommandations personnalisées
+            </CardTitle>
+            <CardDescription>
+              Erreurs prioritaires à revoir pour améliorer votre français
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {personalizedMistakes.slice(0, 3).map((mistake, index) => (
+                <div key={mistake.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                  <div className="flex-1">
+                    <Badge className={getTopicColor(mistake.topic_id)} size="sm">
+                      {mistake.topic_id.replace(/-/g, ' ')}
+                    </Badge>
+                    <p className="text-sm text-gray-700 mt-1 line-clamp-2">
+                      {mistake.question}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => markAsResolved(mistake.id)}
+                    className="ml-3"
+                  >
+                    Revu
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filter and Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div className="flex flex-wrap gap-2">
           <Button
@@ -126,6 +240,7 @@ const Mistakes = () => {
         </div>
       </div>
 
+      {/* Mistakes List */}
       {filteredMistakes.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
@@ -228,6 +343,7 @@ const Mistakes = () => {
         </div>
       )}
 
+      {/* Learning Tips */}
       {mistakes.length > 0 && (
         <Card className="bg-gradient-to-r from-blue-50 to-red-50 border-0">
           <CardHeader>

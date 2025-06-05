@@ -47,6 +47,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
   const [score, setScore] = useState(0);
   const [answerFeedback, setAnswerFeedback] = useState<{[key: string]: boolean}>({});
   const [mistakes, setMistakes] = useState<Array<{question: string, userAnswer: string, correctAnswer: string}>>([]);
+  const [achievements, setAchievements] = useState<string[]>([]);
   const { toast } = useToast();
 
   const exercises = topic ? (exerciseData[topic.id] || []) : [];
@@ -65,6 +66,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
       setSelectedAnswers([]);
       setSelectedWords([]);
       setAnswerFeedback({});
+      setAchievements([]);
       
       if (exercises.length === 0) {
         console.error('No exercises found for topic:', topic.id);
@@ -115,7 +117,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     );
   };
 
-  const handleAnswerSubmit = () => {
+  const handleAnswerSubmit = async () => {
     if (!exercise) return;
     
     let userAnswer = '';
@@ -160,6 +162,20 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
       };
       setMistakes(prev => [...prev, newMistake]);
       
+      // Create learning insight for adaptive learning
+      if (topic) {
+        try {
+          await SupabaseUserManager.createLearningInsight(
+            topic.id,
+            `Difficulty with ${exercise.type} exercises`,
+            1,
+            [exercise.type]
+          );
+        } catch (error) {
+          console.error('Error creating learning insight:', error);
+        }
+      }
+      
       toast({
         title: "Pas tout à fait...",
         description: "Consultez l'explication pour mieux comprendre.",
@@ -168,7 +184,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     }
   };
 
-  const handleNextExercise = () => {
+  const handleNextExercise = async () => {
     if (currentExercise < exercises.length - 1) {
       setCurrentExercise(currentExercise + 1);
       setSelectedAnswers([]);
@@ -179,6 +195,21 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     } else {
       if (topic) {
         const finalScore = Math.round((score / (exercises.length * 25)) * 100);
+        
+        // Check for achievements
+        try {
+          const newAchievements = await SupabaseUserManager.checkAndAwardAchievements(finalScore, topic.id);
+          if (newAchievements.length > 0) {
+            setAchievements(newAchievements);
+            toast({
+              title: "Félicitations !",
+              description: `Vous avez débloqué ${newAchievements.length} nouveau(x) badge(s) !`,
+            });
+          }
+        } catch (error) {
+          console.error('Error checking achievements:', error);
+        }
+        
         onComplete(finalScore, topic, mistakes);
         toast({
           title: "Exercices terminés !",
@@ -252,6 +283,29 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
           />
         </CardContent>
       </Card>
+
+      {/* Achievement Notifications */}
+      {achievements.length > 0 && (
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-yellow-50 to-orange-50">
+          <CardHeader>
+            <CardTitle className="text-xl text-center text-yellow-800">
+              🏆 Nouveaux badges débloqués !
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {achievements.map((achievement, index) => (
+                <div key={index} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {achievement === 'perfect_score' && '✨ Score parfait'}
+                  {achievement === 'first_completion' && '🎯 Premier succès'}
+                  {achievement === 'week_streak' && '🔥 Série de 7 jours'}
+                  {achievement.startsWith('mastery_') && '🎓 Maîtrise du sujet'}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfile {
@@ -152,7 +153,7 @@ export class SupabaseUserManager {
       .from('user_mistakes')
       .update({ 
         is_resolved: true,
-        resolution_attempts: supabase.rpc('increment_resolution_attempts', { mistake_id: mistakeId })
+        resolution_attempts: 1
       })
       .eq('id', mistakeId);
 
@@ -203,11 +204,14 @@ export class SupabaseUserManager {
     let streak = 0;
     let lastDate: Date | null = null;
     let totalPoints = 0;
+    
     if (sessions && sessions.length > 0) {
       totalPoints = sessions.reduce((sum: number, s: any) => sum + (s.total_points || 0), 0);
+      
       for (const session of sessions) {
         if (!session.session_start) continue;
         const sessionDate = new Date(session.session_start.split('T')[0]);
+        
         if (!lastDate) {
           streak = 1;
           lastDate = sessionDate;
@@ -222,7 +226,99 @@ export class SupabaseUserManager {
         }
       }
     }
+    
     return { totalPoints, streak };
+  }
+
+  // Adaptive learning: Get personalized mistakes for review
+  static async getPersonalizedMistakes(limit: number = 5): Promise<UserMistake[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: mistakes } = await supabase
+      .from('user_mistakes')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_resolved', false)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    return mistakes || [];
+  }
+
+  // Create learning insights for adaptive learning
+  static async createLearningInsight(
+    topicId: string,
+    weaknessPattern: string,
+    priorityLevel: number = 1,
+    suggestedExercises: string[] = []
+  ): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('learning_insights')
+      .insert({
+        user_id: user.id,
+        topic_id: topicId,
+        weakness_pattern: weaknessPattern,
+        priority_level: priorityLevel,
+        suggested_exercises: suggestedExercises
+      });
+
+    if (error) throw error;
+  }
+
+  // Get learning insights for adaptive recommendations
+  static async getLearningInsights(): Promise<any[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: insights } = await supabase
+      .from('learning_insights')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('priority_level', { ascending: false });
+
+    return insights || [];
+  }
+
+  // Award achievements based on progress
+  static async checkAndAwardAchievements(score: number, topicId: string): Promise<string[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const awarded: string[] = [];
+
+    // Get user's current achievements
+    const existingBadges = await this.getUserBadges();
+
+    // Perfect score achievement
+    if (score === 100 && !existingBadges.includes('perfect_score')) {
+      await this.addUserBadge('perfect_score', { topic: topicId, score });
+      awarded.push('perfect_score');
+    }
+
+    // First completion achievement
+    if (score >= 60 && !existingBadges.includes('first_completion')) {
+      await this.addUserBadge('first_completion', { topic: topicId, score });
+      awarded.push('first_completion');
+    }
+
+    // Topic mastery achievement (80% or higher)
+    if (score >= 80 && !existingBadges.includes(`mastery_${topicId}`)) {
+      await this.addUserBadge(`mastery_${topicId}`, { topic: topicId, score });
+      awarded.push(`mastery_${topicId}`);
+    }
+
+    // Check for streak achievements
+    const { streak } = await this.getUserSessionStats();
+    if (streak >= 7 && !existingBadges.includes('week_streak')) {
+      await this.addUserBadge('week_streak', { streak });
+      awarded.push('week_streak');
+    }
+
+    return awarded;
   }
 }
 
