@@ -192,7 +192,7 @@ const Mistakes = () => {
               {personalizedMistakes.slice(0, 3).map((mistake, index) => (
                 <div key={mistake.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                   <div className="flex-1">
-                    <Badge className={getTopicColor(mistake.topic_id)} size="sm">
+                    <Badge className={getTopicColor(mistake.topic_id)}>
                       {mistake.topic_id.replace(/-/g, ' ')}
                     </Badge>
                     <p className="text-sm text-gray-700 mt-1 line-clamp-2">
