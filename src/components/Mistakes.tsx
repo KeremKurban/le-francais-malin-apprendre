@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Calendar, RotateCcw, CheckCircle } from 'lucide-react';
 import { SupabaseUserManager, UserMistake } from '@/utils/SupabaseUserManager';
 import { useToast } from '@/hooks/use-toast';
+import React from 'react';
 
 const Mistakes = () => {
   const [mistakes, setMistakes] = useState<UserMistake[]>([]);
@@ -79,6 +80,63 @@ const Mistakes = () => {
     const index = uniqueTopics.indexOf(topic) % colors.length;
     return colors[index];
   };
+
+  // Helper to parse details string into array of feedback objects
+  function parseMistakeDetails(details: string) {
+    if (!details) return [];
+    // Example: Blank 1: expected "foo", got "bar"; Blank 2: expected "baz", got "baz"
+    return details.split(';').map(part => part.trim()).filter(Boolean);
+  }
+
+  // Helper to render fill-in-the-blank with inline feedback using JSON details
+  function renderBlanksWithFeedback(mistake: UserMistake) {
+    const blanks = mistake.question.split(/_{3,}/g); // Split on ___
+    let detailsArr: any[] = [];
+    // Try to parse details as JSON (new format)
+    try {
+      if (typeof (mistake as any).details === 'string') {
+        detailsArr = JSON.parse((mistake as any).details);
+      } else if (Array.isArray((mistake as any).details)) {
+        detailsArr = (mistake as any).details;
+      }
+    } catch {
+      detailsArr = [];
+    }
+    // Fallback: use user_answer/correct_answer split if no details
+    const userAnswers = mistake.user_answer ? mistake.user_answer.split(',') : [];
+    const correctAnswers = mistake.correct_answer ? mistake.correct_answer.split(',') : [];
+    // If not enough blanks, fallback
+    if (blanks.length <= 1) return <span>{mistake.question}</span>;
+    const parts = [];
+    for (let i = 0; i < blanks.length; i++) {
+      parts.push(<span key={`q${i}`}>{blanks[i]}</span>);
+      if (i < blanks.length - 1) {
+        let user = userAnswers[i] || '';
+        let correct = correctAnswers[i] || '';
+        let isCorrect = user === correct;
+        if (detailsArr[i]) {
+          user = detailsArr[i].user;
+          correct = detailsArr[i].correct;
+          isCorrect = detailsArr[i].isCorrect;
+        }
+        parts.push(
+          <span key={`blank${i}`}
+            className={`px-2 py-1 rounded font-mono mx-1 ${isCorrect ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}
+          >
+            {user || <span className="opacity-50">(vide)</span>}
+          </span>
+        );
+        if (!isCorrect) {
+          parts.push(
+            <span key={`corr${i}`} className="ml-2 text-xs text-green-700 bg-green-50 px-1 rounded border border-green-200">
+              Corr: {correct}
+            </span>
+          );
+        }
+      }
+    }
+    return <div className="flex flex-wrap items-center gap-1">{parts}</div>;
+  }
 
   if (loading) {
     return (
@@ -188,28 +246,46 @@ const Mistakes = () => {
               <CardContent className="space-y-4">
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Question :</h4>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded-md">
-                    {mistake.question}
-                  </p>
+                  <div className="text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {/* Render inline blanks with feedback if possible */}
+                    {mistake.question.includes('___') && mistake.user_answer.includes(',')
+                      ? renderBlanksWithFeedback(mistake)
+                      : <span>{mistake.question}</span>}
+                  </div>
                 </div>
-                
+                {/* Inline feedback for each blank/part if details exist */}
+                {((mistake as any).details || '').length > 0 && (
+                  <div className="mt-2">
+                    <h5 className="font-medium text-sm text-gray-700 mb-1">Détails :</h5>
+                    <ul className="list-disc list-inside text-xs text-gray-600">
+                      {parseMistakeDetails((mistake as any).details).map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium text-red-600 mb-2">Votre réponse :</h4>
                     <p className="text-gray-700 bg-red-50 p-3 rounded-md border border-red-200">
-                      {mistake.user_answer}
+                      {/* For fill-in-the-blank, show as comma-separated if not inline */}
+                      {mistake.question.includes('___') && mistake.user_answer.includes(',')
+                        ? mistake.user_answer.split(',').map((a, i) => <span key={i} className="mr-2">{a}</span>)
+                        : mistake.user_answer}
                     </p>
                   </div>
-                  
                   <div>
                     <h4 className="font-medium text-green-600 mb-2">Réponse correcte :</h4>
                     <p className="text-gray-700 bg-green-50 p-3 rounded-md border border-green-200">
-                      {mistake.correct_answer}
+                      {mistake.question.includes('___') && mistake.correct_answer.includes(',')
+                        ? mistake.correct_answer.split(',').map((a, i) => <span key={i} className="mr-2">{a}</span>)
+                        : mistake.correct_answer}
                     </p>
                   </div>
                 </div>
 
-                {!mistake.is_resolved && (
+                {!mistake.is_resolved && false && (
                   <div className="pt-4 border-t">
                     <Button
                       variant="outline"

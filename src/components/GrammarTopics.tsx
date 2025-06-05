@@ -247,7 +247,7 @@ const GrammarTopics = ({ onTopicSelect, userProgress }: GrammarTopicsProps) => {
                   className={`w-full bg-gradient-to-r ${topic.color} hover:opacity-90 text-white`}
                   onClick={(e) => handleTopicClick(topic, e)}
                 >
-                  {progress > 0 ? 'Continuer' : 'Commencer'}
+                  {progress >= 100 ? 'Pratiquer à nouveau' : progress > 0 ? 'Continuer' : 'Commencer'}
                 </Button>
               </CardContent>
             </Card>

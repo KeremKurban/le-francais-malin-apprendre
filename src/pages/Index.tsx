@@ -8,6 +8,7 @@ import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
 import Leaderboard from '@/components/Leaderboard';
 import Mistakes from '@/components/Mistakes';
+import AccountPage from '@/pages/Account';
 import { useAuth } from '@/hooks/useAuth';
 import { SupabaseUserManager, UserProfile, UserProgress } from '@/utils/SupabaseUserManager';
 import { useToast } from '@/hooks/use-toast';
@@ -156,6 +157,8 @@ const Index = () => {
         return <Leaderboard />;
       case 'mistakes':
         return <Mistakes />;
+      case 'account':
+        return <AccountPage />;
       default:
         return <DashboardView userProfile={userProfile} userProgress={userProgress} setCurrentView={setCurrentView} />;
     }
@@ -226,6 +229,13 @@ const Index = () => {
               >
                 Erreurs
               </Button>
+              <Button 
+                variant={currentView === 'account' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('account')}
+                size="sm"
+              >
+                Mon compte
+              </Button>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -284,6 +294,14 @@ const Index = () => {
               className="whitespace-nowrap"
             >
               Erreurs
+            </Button>
+            <Button 
+              variant={currentView === 'account' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('account')}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Mon compte
             </Button>
           </div>
         </div>

@@ -61,6 +61,7 @@ export class SupabaseUserManager {
       userAnswer: string;
       correctAnswer: string;
       type: string;
+      details?: any; // Accept JSON details
     }> = []
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +72,8 @@ export class SupabaseUserManager {
       question: mistake.question,
       userAnswer: mistake.userAnswer,
       correctAnswer: mistake.correctAnswer,
-      type: mistake.type
+      type: mistake.type,
+      details: mistake.details ? JSON.stringify(mistake.details) : null
     }));
 
     const { error } = await supabase.rpc('update_learning_progress', {
@@ -115,7 +117,7 @@ export class SupabaseUserManager {
 
     return mistakes || [];
   }
-
+ 
   static async getLeaderboard(): Promise<LeaderboardEntry[]> {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -148,14 +150,21 @@ export class SupabaseUserManager {
   }
 
   static async markMistakeAsResolved(mistakeId: string): Promise<void> {
+    // Fetch current attempts
+    const { data, error: fetchError } = await supabase
+      .from('user_mistakes')
+      .select('resolution_attempts')
+      .eq('id', mistakeId)
+      .single();
+    if (fetchError) throw fetchError;
+    const currentAttempts = data?.resolution_attempts || 0;
     const { error } = await supabase
       .from('user_mistakes')
       .update({ 
         is_resolved: true,
-        resolution_attempts: supabase.rpc('increment_resolution_attempts', { mistake_id: mistakeId })
+        resolution_attempts: currentAttempts + 1
       })
       .eq('id', mistakeId);
-
     if (error) throw error;
   }
 
@@ -223,6 +232,27 @@ export class SupabaseUserManager {
       }
     }
     return { totalPoints, streak };
+  }
+
+  static async updateUserProfile(updates: { name?: string }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+    if (error) throw error;
+  }
+
+  static async resetUserScores() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    // Set all best_score, mastery_level, total_attempts to 0 for this user
+    const { error } = await supabase
+      .from('user_progress')
+      .update({ best_score: 0, mastery_level: 0, total_attempts: 0 })
+      .eq('user_id', user.id);
+    if (error) throw error;
   }
 }
 
