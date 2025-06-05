@@ -107,6 +107,7 @@ export type Database = {
         Row: {
           correct_answer: string
           created_at: string | null
+          details: Json | null
           id: string
           is_resolved: boolean | null
           mistake_type: string
@@ -119,6 +120,7 @@ export type Database = {
         Insert: {
           correct_answer: string
           created_at?: string | null
+          details?: Json | null
           id?: string
           is_resolved?: boolean | null
           mistake_type: string
@@ -131,6 +133,7 @@ export type Database = {
         Update: {
           correct_answer?: string
           created_at?: string | null
+          details?: Json | null
           id?: string
           is_resolved?: boolean | null
           mistake_type?: string
@@ -233,7 +236,7 @@ export type Database = {
           p_user_id: string
           p_topic_id: string
           p_score: number
-          p_mistakes?: Json
+          p_mistakes: Json
         }
         Returns: undefined
       }

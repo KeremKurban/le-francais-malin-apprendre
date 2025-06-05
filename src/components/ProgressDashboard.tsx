@@ -32,10 +32,14 @@ const badgeDefinitions = {
 };
 
 interface UserProgress {
+  id: string;
+  name: string;
   level: string;
-  streak: number;
+  created_at: string;
+  updated_at: string;
   totalPoints: number;
   badges: string[];
+  streak: number;
   topicProgress: Record<string, number>;
 }
 
@@ -46,7 +50,7 @@ interface ProgressDashboardProps {
 const ProgressDashboard = ({ userProgress }: ProgressDashboardProps) => {
   const totalTopics = Object.keys(userProgress.topicProgress).length;
   const completedTopics = Object.values(userProgress.topicProgress).filter((progress: number) => progress >= 80).length;
-  const averageProgress = Object.values(userProgress.topicProgress).reduce((a: number, b: number) => a + b, 0) / totalTopics;
+  const averageProgress = totalTopics > 0 ? Object.values(userProgress.topicProgress).reduce((a: number, b: number) => a + b, 0) / totalTopics : 0;
 
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return 'bg-green-500';
@@ -183,6 +187,14 @@ const ProgressDashboard = ({ userProgress }: ProgressDashboardProps) => {
                 </div>
               );
             })}
+            
+            {userProgress.badges.length === 0 && (
+              <div className="text-center py-8">
+                <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">Aucun badge obtenu pour le moment</p>
+                <p className="text-sm text-gray-400">Continuez à pratiquer pour débloquer des récompenses !</p>
+              </div>
+            )}
             
             {/* Next Badge */}
             <div className="flex items-center space-x-4 p-4 bg-gray-100 rounded-lg opacity-60">

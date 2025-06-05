@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Book } from 'lucide-react';
@@ -6,7 +7,7 @@ import ExerciseHeader from './exercises/ExerciseHeader';
 import ExerciseContent from './exercises/ExerciseContent';
 import ExerciseActions from './exercises/ExerciseActions';
 import { exerciseData } from '@/data/exerciseData';
-import { UserManager } from '@/utils/UserManager';
+import { SupabaseUserManager } from '@/utils/SupabaseUserManager';
 
 interface Topic {
   id: string;
@@ -32,7 +33,7 @@ interface Exercise {
 
 interface ExerciseInterfaceProps {
   topic: Topic | null;
-  onComplete: (score: number, topic: Topic) => void;
+  onComplete: (score: number, topic: Topic, mistakes?: Array<{question: string, userAnswer: string, correctAnswer: string}>) => void;
   onBack: () => void;
 }
 
@@ -178,18 +179,7 @@ const ExerciseInterface = ({ topic, onComplete, onBack }: ExerciseInterfaceProps
     } else {
       if (topic) {
         const finalScore = Math.round((score / (exercises.length * 25)) * 100);
-        
-        // Add mistakes to UserManager
-        mistakes.forEach(mistake => {
-          UserManager.addMistake({
-            topic: topic.id,
-            question: mistake.question,
-            userAnswer: mistake.userAnswer,
-            correctAnswer: mistake.correctAnswer
-          });
-        });
-        
-        onComplete(finalScore, topic);
+        onComplete(finalScore, topic, mistakes);
         toast({
           title: "Exercices terminés !",
           description: `Score final: ${finalScore}%`,
