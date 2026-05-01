@@ -74,7 +74,11 @@ async def evaluate_response(
             ],
         )
 
-        raw = api_response.choices[0].message.content.strip()
+        content = api_response.choices[0].message.content
+        if not content:
+            finish_reason = api_response.choices[0].finish_reason
+            raise ValueError(f"Model returned no text content (finish_reason={finish_reason!r}). Check OPENROUTER_MODEL and API key.")
+        raw = content.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
