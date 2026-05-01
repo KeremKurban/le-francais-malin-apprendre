@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
 
-    # Anthropic
-    anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-6"
+    # OpenAI
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
 
     # MLflow
     mlflow_tracking_uri: str = "http://mlflow:5000"

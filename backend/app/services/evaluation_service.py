@@ -1,12 +1,12 @@
 """
 Response evaluation service.
-Calls Claude API to evaluate user responses, stores errors, and logs to MLflow.
+Calls OpenAI API to evaluate user responses, stores errors, and logs to MLflow.
 """
 import json
 import uuid
 from typing import Dict
 
-import anthropic
+from openai import OpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -23,7 +23,7 @@ from app.prompts.evaluation_prompts import (
 from app.services.mlflow_service import mlflow_service
 
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+client = OpenAI(api_key=settings.openai_api_key)
 
 
 async def evaluate_response(
@@ -31,7 +31,7 @@ async def evaluate_response(
     exercise: Exercise,
     response: UserResponse,
 ) -> Dict:
-    """Evaluate a user response with Claude and persist errors + MLflow run."""
+    """Evaluate a user response with OpenAI and persist errors + MLflow run."""
     rubric_text = json.dumps(exercise.rubric, ensure_ascii=False, indent=2)
 
     user_message = EVALUATION_USER_TEMPLATE_V1.format(
@@ -55,24 +55,20 @@ async def evaluate_response(
     with mlflow_service.start_eval_run(
         run_name=run_name,
         prompt_version=PROMPT_VERSION,
-        model_name=settings.claude_model,
+        model_name=settings.openai_model,
         eval_type="response_evaluation",
         params=params,
     ) as (result_holder, run_id):
-        api_response = client.messages.create(
-            model=settings.claude_model,
+        api_response = client.chat.completions.create(
+            model=settings.openai_model,
             max_tokens=2048,
-            system=[
-                {
-                    "type": "text",
-                    "text": EVALUATION_SYSTEM_PROMPT_V1,
-                    "cache_control": {"type": "ephemeral"},
-                }
+            messages=[
+                {"role": "system", "content": EVALUATION_SYSTEM_PROMPT_V1},
+                {"role": "user", "content": user_message},
             ],
-            messages=[{"role": "user", "content": user_message}],
         )
 
-        raw = api_response.content[0].text.strip()
+        raw = api_response.choices[0].message.content.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -117,7 +113,7 @@ async def evaluate_response(
             mlflow_run_id=run_id,
             experiment_name=settings.mlflow_experiment_name,
             prompt_version=PROMPT_VERSION,
-            model_name=settings.claude_model,
+            model_name=settings.openai_model,
             eval_type="response_evaluation",
             metrics=result_holder["metrics"],
             params=params,

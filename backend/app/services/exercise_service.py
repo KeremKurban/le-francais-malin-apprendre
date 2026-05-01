@@ -1,12 +1,12 @@
 """
 Exercise generation service.
-Calls Claude API with a versioned prompt and returns a structured exercise.
+Calls OpenAI API with a versioned prompt and returns a structured exercise.
 """
 import json
 import uuid
 from typing import Optional
 
-import anthropic
+from openai import OpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -20,7 +20,7 @@ from app.prompts.exercise_prompts import (
 )
 
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+client = OpenAI(api_key=settings.openai_api_key)
 
 
 async def generate_exercise(
@@ -32,7 +32,7 @@ async def generate_exercise(
     topic_id: Optional[uuid.UUID] = None,
     extra_context: str = "",
 ) -> Exercise:
-    """Generate an exercise via Claude API and persist it."""
+    """Generate an exercise via OpenAI API and persist it."""
     topic = await _resolve_topic(db, topic_id, exam_type, level)
 
     user_message = EXERCISE_USER_TEMPLATE_V1.format(
@@ -45,20 +45,16 @@ async def generate_exercise(
         extra_context=extra_context or "Aucun contexte supplémentaire",
     )
 
-    response = client.messages.create(
-        model=settings.claude_model,
+    response = client.chat.completions.create(
+        model=settings.openai_model,
         max_tokens=1024,
-        system=[
-            {
-                "type": "text",
-                "text": EXERCISE_SYSTEM_PROMPT_V1,
-                "cache_control": {"type": "ephemeral"},
-            }
+        messages=[
+            {"role": "system", "content": EXERCISE_SYSTEM_PROMPT_V1},
+            {"role": "user", "content": user_message},
         ],
-        messages=[{"role": "user", "content": user_message}],
     )
 
-    raw = response.content[0].text.strip()
+    raw = response.choices[0].message.content.strip()
     # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("```")[1]

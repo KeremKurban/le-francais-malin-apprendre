@@ -31,8 +31,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-francais}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-francais_malin}
       SECRET_KEY: ${SECRET_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-6}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_EXPERIMENT_NAME: ${MLFLOW_EXPERIMENT_NAME:-francais-malin-evaluations}
       DEBUG: ${DEBUG:-false}
