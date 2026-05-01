@@ -32,7 +32,8 @@ jobs:
 
       - name: Run tests
         env:
-          ANTHROPIC_API_KEY: "sk-test-placeholder"
+          OPENROUTER_API_KEY: "sk-or-test-placeholder"
+          OPENROUTER_MODEL: "openai/gpt-4o-mini"
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           SECRET_KEY: "ci-secret-key-not-for-prod"
         run: pytest tests/ -v --asyncio-mode=auto --tb=short
