@@ -54,3 +54,7 @@ mlflow/artifacts/
 coverage/
 .coverage
 htmlcov/
+
+# Playwright
+playwright-report/
+test-results/

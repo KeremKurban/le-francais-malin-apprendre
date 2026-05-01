@@ -185,6 +185,38 @@ cd backend
 pytest tests/ -v --asyncio-mode=auto
 ```
 
+### Playwright AI mode tests (frontend E2E)
+
+1. Start local stack (required for smoke suite):
+```bash
+docker compose up -d --build
+```
+
+2. Install Playwright browser binaries (first run only):
+```bash
+npx playwright install chromium
+```
+
+3. Run deterministic mocked AI mode E2E suite:
+```bash
+npm run test:e2e:ui
+```
+
+4. Run real-backend smoke suite:
+```bash
+npm run test:e2e:smoke
+```
+
+5. Run all Playwright suites:
+```bash
+npm run test:e2e
+```
+
+Troubleshooting:
+- Ensure frontend is reachable at `http://localhost:5173`.
+- Ensure backend is reachable at `http://localhost:8000/docs`.
+- If Docker env changes were made, recreate services with `docker compose up -d --force-recreate`.
+
 ---
 
 ## Architecture Decisions

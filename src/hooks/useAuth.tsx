@@ -16,8 +16,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const e2eUserEmail = import.meta.env.VITE_E2E_USER_EMAIL as string | undefined;
 
   useEffect(() => {
+    // Test-only bypass to make E2E deterministic without Supabase UI auth.
+    if (e2eUserEmail) {
+      const fakeUser = {
+        id: 'e2e-user-id-0001',
+        email: e2eUserEmail,
+      } as User;
+      setUser(fakeUser);
+      setSession({ user: fakeUser } as Session);
+      setLoading(false);
+      return;
+    }
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -35,9 +48,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [e2eUserEmail]);
 
   const signOut = async () => {
+    if (e2eUserEmail) {
+      setUser(null);
+      setSession(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 
