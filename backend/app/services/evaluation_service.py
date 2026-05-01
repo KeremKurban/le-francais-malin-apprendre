@@ -3,6 +3,7 @@ Response evaluation service.
 Calls OpenAI API to evaluate user responses, stores errors, and logs to MLflow.
 """
 import json
+import re
 import uuid
 from typing import Dict
 
@@ -27,6 +28,46 @@ client = AsyncOpenAI(
     api_key=settings.openrouter_api_key,
     base_url=settings.openrouter_base_url,
 )
+
+
+def _extract_json(text: str) -> dict:
+    """Try several strategies to pull a JSON object out of a model response."""
+    text = text.strip()
+    # 1. Direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # 2. Fenced code block  ```json ... ``` or ``` ... ```
+    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fence:
+        try:
+            return json.loads(fence.group(1))
+        except json.JSONDecodeError:
+            pass
+    # 3. First { ... last }
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    raise ValueError(f"No valid JSON found in model response: {text[:200]!r}")
+
+
+def _fallback_evaluation(raw: str) -> dict:
+    """Return a minimal valid evaluation when the model ignores the JSON format."""
+    feedback = raw.strip()[:800] if raw.strip() else "Évaluation non disponible."
+    return {
+        "score": 50,
+        "overall_feedback": feedback,
+        "strengths": [],
+        "improvements": ["Le modèle n'a pas retourné une évaluation structurée. Réessayez."],
+        "errors": [],
+        "next_steps": [
+            {"type": "retry", "description": "Soumettez à nouveau votre réponse.", "exercise_hint": None}
+        ],
+    }
 
 
 async def evaluate_response(
@@ -78,13 +119,12 @@ async def evaluate_response(
         if not content:
             finish_reason = api_response.choices[0].finish_reason
             raise ValueError(f"Model returned no text content (finish_reason={finish_reason!r}). Check OPENROUTER_MODEL and API key.")
-        raw = content.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
 
-        evaluation = json.loads(raw)
+        try:
+            evaluation = _extract_json(content)
+        except ValueError:
+            print(f"[eval] JSON parse failed, using fallback. Raw response: {content[:300]!r}")
+            evaluation = _fallback_evaluation(content)
         score = float(evaluation.get("score", 0))
 
         error_type_counts: Dict[str, int] = {}
