@@ -23,7 +23,10 @@ from app.prompts.evaluation_prompts import (
 from app.services.mlflow_service import mlflow_service
 
 settings = get_settings()
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(
+    api_key=settings.openrouter_api_key,
+    base_url=settings.openrouter_base_url,
+)
 
 
 async def evaluate_response(
@@ -58,12 +61,12 @@ async def evaluate_response(
     with mlflow_service.start_eval_run(
         run_name=run_name,
         prompt_version=PROMPT_VERSION,
-        model_name=settings.openai_model,
+        model_name=settings.openrouter_model,
         eval_type="response_evaluation",
         params=params,
     ) as (result_holder, run_id):
         api_response = await client.chat.completions.create(
-            model=settings.openai_model,
+            model=settings.openrouter_model,
             max_tokens=2048,
             messages=[
                 {"role": "system", "content": EVALUATION_SYSTEM_PROMPT_V1},
@@ -116,7 +119,7 @@ async def evaluate_response(
             mlflow_run_id=run_id,
             experiment_name=settings.mlflow_experiment_name,
             prompt_version=PROMPT_VERSION,
-            model_name=settings.openai_model,
+            model_name=settings.openrouter_model,
             eval_type="response_evaluation",
             metrics=result_holder.get("metrics", {}),
             params=params,

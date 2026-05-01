@@ -20,9 +20,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
 
-    # OpenAI
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o"
+    # OpenRouter (OpenAI-compatible)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "anthropic/claude-3.5-haiku"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # MLflow
     mlflow_tracking_uri: str = "http://mlflow:5000"

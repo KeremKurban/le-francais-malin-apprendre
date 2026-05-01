@@ -20,7 +20,10 @@ from app.prompts.exercise_prompts import (
 )
 
 settings = get_settings()
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(
+    api_key=settings.openrouter_api_key,
+    base_url=settings.openrouter_base_url,
+)
 
 
 async def generate_exercise(
@@ -46,7 +49,7 @@ async def generate_exercise(
     )
 
     response = await client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.openrouter_model,
         max_tokens=1024,
         messages=[
             {"role": "system", "content": EXERCISE_SYSTEM_PROMPT_V1},
