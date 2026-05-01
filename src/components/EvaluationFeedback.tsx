@@ -5,6 +5,20 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, RefreshCw, Flag } from 'lucide-react';
 import { EvaluationResult, NextStep } from '@/api/backendClient';
 
+/** Renders a markdown string with bold (**text**) and newlines. No extra deps needed. */
+function MarkdownText({ text, className }: { text: string; className?: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <span className={className} style={{ whiteSpace: 'pre-wrap' }}>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i}>{part.slice(2, -2)}</strong>
+          : part
+      )}
+    </span>
+  );
+}
+
 interface Props {
   evaluation: EvaluationResult;
   onNextStep: (step: NextStep) => void;
@@ -85,7 +99,7 @@ export default function EvaluationFeedback({ evaluation, onNextStep, onNewExerci
             <ScoreRing score={Math.round(score)} />
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-2">Évaluation générale</h3>
-              <p className="text-gray-700 text-sm leading-relaxed">{overall_feedback}</p>
+              <MarkdownText text={overall_feedback} className="text-gray-700 text-sm leading-relaxed" />
               <div className="flex gap-2 mt-3">
                 {score >= 70 ? (
                   <Badge className="bg-green-100 text-green-800">Réussi</Badge>

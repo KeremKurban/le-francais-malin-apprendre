@@ -23,14 +23,40 @@ interface SessionConfig {
   mode: 'free' | 'by_topic' | 'mock_exam';
 }
 
+const AI_SESSION_KEY = 'ai_learning_session';
+
+function loadPersistedSession(): { session: Session; config: SessionConfig; view: View } | null {
+  try {
+    const raw = localStorage.getItem(AI_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function AILearning() {
   const { ready, error: authError } = useBackendAuth();
-  const [view, setView] = useState<View>('setup');
-  const [session, setSession] = useState<Session | null>(null);
-  const [config, setConfig] = useState<SessionConfig | null>(null);
+  const persisted = loadPersistedSession();
+  const [view, setView] = useState<View>(persisted?.view ?? 'setup');
+  const [session, setSession] = useState<Session | null>(persisted?.session ?? null);
+  const [config, setConfig] = useState<SessionConfig | null>(persisted?.config ?? null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const { toast } = useToast();
+
+  // Persist session + config + view to localStorage whenever they change
+  const persistState = (s: Session | null, cfg: SessionConfig | null, v: View) => {
+    if (s && cfg) {
+      localStorage.setItem(AI_SESSION_KEY, JSON.stringify({ session: s, config: cfg, view: v }));
+    } else {
+      localStorage.removeItem(AI_SESSION_KEY);
+    }
+  };
+
+  const setViewPersisted = (v: View) => {
+    setView(v);
+    persistState(session, config, v);
+  };
 
   const handleStart = async (cfg: SessionConfig) => {
     setConfig(cfg);
@@ -42,13 +68,9 @@ export default function AILearning() {
         level: cfg.level,
       });
       setSession(s);
-      if (cfg.mode === 'mock_exam') {
-        setView('mock_exam');
-      } else if (cfg.mode === 'by_topic') {
-        setView('topic_map');
-      } else {
-        setView('practice');
-      }
+      const nextView: View = cfg.mode === 'mock_exam' ? 'mock_exam' : cfg.mode === 'by_topic' ? 'topic_map' : 'practice';
+      setView(nextView);
+      persistState(s, cfg, nextView);
     } catch (e: unknown) {
       toast({
         title: 'Erreur',
@@ -62,7 +84,7 @@ export default function AILearning() {
 
   const handleTopicSelect = (topic: Topic) => {
     setSelectedTopic(topic);
-    setView('practice');
+    setViewPersisted('practice');
   };
 
   const handleComplete = async (score: number) => {
@@ -77,6 +99,7 @@ export default function AILearning() {
       title: 'Session terminée',
       description: `Score final : ${score}%`,
     });
+    localStorage.removeItem(AI_SESSION_KEY);
     setView('dashboard');
   };
 
@@ -85,6 +108,7 @@ export default function AILearning() {
     setConfig(null);
     setSelectedTopic(null);
     setView('setup');
+    localStorage.removeItem(AI_SESSION_KEY);
   };
 
   if (!ready) {
@@ -127,21 +151,21 @@ export default function AILearning() {
           <Button
             variant={view === 'topic_map' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setView('topic_map')}
+            onClick={() => setViewPersisted('topic_map')}
           >
             Carte des thèmes
           </Button>
           <Button
             variant={view === 'practice' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setView('practice')}
+            onClick={() => setViewPersisted('practice')}
           >
             Exercice IA
           </Button>
           <Button
             variant={view === 'dashboard' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setView('dashboard')}
+            onClick={() => setViewPersisted('dashboard')}
           >
             Mes progrès
           </Button>
