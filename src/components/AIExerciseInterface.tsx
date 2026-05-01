@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,11 @@ export default function AIExerciseInterface({
   const [sessionScore, setSessionScore] = useState<number[]>([]);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadExercise('writing_prompt');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadExercise = async (exerciseType = 'writing_prompt', context?: string) => {
     setLoadingExercise(true);
@@ -110,19 +115,10 @@ export default function AIExerciseInterface({
     ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
     : 0;
 
-  if (!exercise && !loadingExercise) {
+  if (!exercise && !loadingExercise && error) {
     return (
-      <div className="max-w-2xl mx-auto py-12 text-center space-y-6">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
-          <BookOpen className="w-8 h-8 text-white" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Exercice IA</h2>
-          <p className="text-gray-600 mt-2">
-            Un exercice {examType} niveau {level} va être généré par Claude.
-            Écrivez votre réponse et recevez un retour détaillé.
-          </p>
-        </div>
+      <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
+        <p className="text-red-600">{error}</p>
         <div className="flex gap-3 justify-center flex-wrap">
           {['writing_prompt', 'role_play', 'grammar_correction'].map(type => (
             <Button key={type} variant="outline" onClick={() => loadExercise(type)}>

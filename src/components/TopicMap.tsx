@@ -8,6 +8,7 @@ import { api, Topic } from '@/api/backendClient';
 
 interface Props {
   onTopicSelect: (topic: Topic) => void;
+  initialExamType?: 'FIDE' | 'DELF';
 }
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -24,11 +25,11 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   writing: <PenLine className="w-4 h-4" />,
 };
 
-export default function TopicMap({ onTopicSelect }: Props) {
+export default function TopicMap({ onTopicSelect, initialExamType }: Props) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeExam, setActiveExam] = useState<'FIDE' | 'DELF'>('FIDE');
+  const [activeExam, setActiveExam] = useState<'FIDE' | 'DELF'>(initialExamType ?? 'FIDE');
   const [activeLevel, setActiveLevel] = useState<string>('all');
 
   useEffect(() => {
@@ -93,11 +94,17 @@ export default function TopicMap({ onTopicSelect }: Props) {
           <p className="text-sm text-gray-600 mb-4">
             Situations de la vie quotidienne en Suisse — banque, santé, logement, travail…
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {fideTopics.map(topic => (
-              <TopicCard key={topic.id} topic={topic} onSelect={onTopicSelect} showLevel={false} />
-            ))}
-          </div>
+          {fideTopics.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 text-sm">
+              Aucun thème FIDE disponible. Lancez <code className="bg-gray-100 px-1 rounded">docker-compose exec backend python -m app.db.seed_data</code> pour initialiser les données.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {fideTopics.map(topic => (
+                <TopicCard key={topic.id} topic={topic} onSelect={onTopicSelect} showLevel={false} />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* DELF Tab */}
@@ -115,11 +122,17 @@ export default function TopicMap({ onTopicSelect }: Props) {
               </Button>
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDelf.map(topic => (
-              <TopicCard key={topic.id} topic={topic} onSelect={onTopicSelect} showLevel />
-            ))}
-          </div>
+          {filteredDelf.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 text-sm">
+              Aucun thème DELF disponible. Lancez <code className="bg-gray-100 px-1 rounded">docker-compose exec backend python -m app.db.seed_data</code> pour initialiser les données.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredDelf.map(topic => (
+                <TopicCard key={topic.id} topic={topic} onSelect={onTopicSelect} showLevel />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

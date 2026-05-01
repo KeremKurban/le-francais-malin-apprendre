@@ -20,7 +20,7 @@ type View = 'setup' | 'topic_map' | 'practice' | 'mock_exam' | 'dashboard';
 interface SessionConfig {
   examType: string;
   level: string;
-  mode: 'practice' | 'mock_exam';
+  mode: 'free' | 'by_topic' | 'mock_exam';
 }
 
 export default function AILearning() {
@@ -44,8 +44,10 @@ export default function AILearning() {
       setSession(s);
       if (cfg.mode === 'mock_exam') {
         setView('mock_exam');
-      } else {
+      } else if (cfg.mode === 'by_topic') {
         setView('topic_map');
+      } else {
+        setView('practice');
       }
     } catch (e: unknown) {
       toast({
@@ -153,7 +155,10 @@ export default function AILearning() {
       {view === 'setup' && <SessionSetup onStart={handleStart} />}
 
       {view === 'topic_map' && session && config && (
-        <TopicMap onTopicSelect={handleTopicSelect} />
+        <TopicMap
+          onTopicSelect={handleTopicSelect}
+          initialExamType={config.examType as 'FIDE' | 'DELF'}
+        />
       )}
 
       {view === 'practice' && session && config && (
@@ -163,7 +168,7 @@ export default function AILearning() {
           level={config.level}
           topicId={selectedTopic?.id}
           onComplete={handleComplete}
-          onBack={() => setView('topic_map')}
+          onBack={() => config.mode === 'free' ? reset() : setView('topic_map')}
         />
       )}
 

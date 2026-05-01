@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, Map, Trophy, PenLine } from 'lucide-react';
 
 interface Props {
-  onStart: (config: { examType: string; level: string; mode: 'practice' | 'mock_exam' }) => void;
+  onStart: (config: { examType: string; level: string; mode: 'free' | 'by_topic' | 'mock_exam' }) => void;
 }
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2'];
@@ -92,16 +92,16 @@ export default function SessionSetup({ onStart }: Props) {
           <Button
             variant="outline"
             className="h-auto py-4 flex-col gap-2"
-            onClick={() => onStart({ examType, level, mode: 'practice' })}
+            onClick={() => onStart({ examType, level, mode: 'free' })}
           >
             <PenLine className="w-6 h-6 text-blue-600" />
             <span className="font-semibold">Pratique libre</span>
-            <span className="text-xs text-gray-500 font-normal">Exercices ciblés avec feedback immédiat</span>
+            <span className="text-xs text-gray-500 font-normal">Exercice généré immédiatement</span>
           </Button>
           <Button
             variant="outline"
             className="h-auto py-4 flex-col gap-2"
-            onClick={() => onStart({ examType, level, mode: 'practice' })}
+            onClick={() => onStart({ examType, level, mode: 'by_topic' })}
           >
             <Map className="w-6 h-6 text-green-600" />
             <span className="font-semibold">Par thème</span>
