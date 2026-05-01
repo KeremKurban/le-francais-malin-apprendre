@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-import mlflow
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,8 +13,11 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_tables()
-    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    mlflow.set_experiment(settings.mlflow_experiment_name)
+    try:
+        from app.db.seed_data import seed
+        await seed()
+    except Exception as exc:
+        print(f"[startup] seed_data skipped: {exc}")
     yield
 
 

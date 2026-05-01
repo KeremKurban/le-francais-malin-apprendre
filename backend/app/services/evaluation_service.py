@@ -6,7 +6,7 @@ import json
 import uuid
 from typing import Dict
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -23,7 +23,7 @@ from app.prompts.evaluation_prompts import (
 from app.services.mlflow_service import mlflow_service
 
 settings = get_settings()
-client = OpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 
 async def evaluate_response(
@@ -52,6 +52,9 @@ async def evaluate_response(
         "attempt_number": response.attempt_number,
     }
 
+    result_holder: Dict = {}
+    run_id = "no-mlflow-run"
+
     with mlflow_service.start_eval_run(
         run_name=run_name,
         prompt_version=PROMPT_VERSION,
@@ -59,7 +62,7 @@ async def evaluate_response(
         eval_type="response_evaluation",
         params=params,
     ) as (result_holder, run_id):
-        api_response = client.chat.completions.create(
+        api_response = await client.chat.completions.create(
             model=settings.openai_model,
             max_tokens=2048,
             messages=[
@@ -115,7 +118,7 @@ async def evaluate_response(
             prompt_version=PROMPT_VERSION,
             model_name=settings.openai_model,
             eval_type="response_evaluation",
-            metrics=result_holder["metrics"],
+            metrics=result_holder.get("metrics", {}),
             params=params,
         )
     )

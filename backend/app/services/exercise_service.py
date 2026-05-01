@@ -6,7 +6,7 @@ import json
 import uuid
 from typing import Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -20,7 +20,7 @@ from app.prompts.exercise_prompts import (
 )
 
 settings = get_settings()
-client = OpenAI(api_key=settings.openai_api_key)
+client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 
 async def generate_exercise(
@@ -45,7 +45,7 @@ async def generate_exercise(
         extra_context=extra_context or "Aucun contexte supplémentaire",
     )
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model=settings.openai_model,
         max_tokens=1024,
         messages=[
@@ -93,12 +93,18 @@ async def _resolve_topic(
         if topic:
             return topic
 
-    result = await db.execute(
-        select(Topic).where(
-            Topic.exam_type.in_([exam_type, "BOTH"]),
-            Topic.level == level,
-        ).limit(1)
-    )
+    # For FIDE, topics have no level — don't filter by level
+    if exam_type == "FIDE":
+        result = await db.execute(
+            select(Topic).where(Topic.exam_type.in_(["FIDE", "BOTH"])).limit(1)
+        )
+    else:
+        result = await db.execute(
+            select(Topic).where(
+                Topic.exam_type.in_([exam_type, "BOTH"]),
+                Topic.level == level,
+            ).limit(1)
+        )
     topic = result.scalar_one_or_none()
 
     if not topic:

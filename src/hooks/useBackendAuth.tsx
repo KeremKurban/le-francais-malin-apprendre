@@ -21,38 +21,44 @@ export function useBackendAuth(): BackendAuthState {
       return;
     }
 
+    const password = `supabase-${user.id}`;
+
+    const loginOrRegister = (): Promise<void> =>
+      api
+        .login({ email: user.email!, password })
+        .then(({ access_token }) => {
+          localStorage.setItem('backend_token', access_token);
+          setState({ ready: true, error: null });
+        })
+        .catch(() =>
+          api
+            .register({
+              email: user.email!,
+              username: user.email!.split('@')[0],
+              password,
+              target_exam: 'DELF',
+              target_level: 'B1',
+            })
+            .then(({ access_token }) => {
+              localStorage.setItem('backend_token', access_token);
+              setState({ ready: true, error: null });
+            }),
+        );
+
     const existing = localStorage.getItem('backend_token');
     if (existing) {
-      setState({ ready: true, error: null });
+      // Verify token is still valid before trusting it
+      api
+        .me()
+        .then(() => setState({ ready: true, error: null }))
+        .catch(() => {
+          localStorage.removeItem('backend_token');
+          loginOrRegister().catch(err => setState({ ready: false, error: err.message }));
+        });
       return;
     }
 
-    const password = `supabase-${user.id}`;
-
-    api
-      .login({ email: user.email, password })
-      .then(({ access_token }) => {
-        localStorage.setItem('backend_token', access_token);
-        setState({ ready: true, error: null });
-      })
-      .catch(() => {
-        // User not yet registered on backend — register first
-        return api
-          .register({
-            email: user.email!,
-            username: user.email!.split('@')[0],
-            password,
-            target_exam: 'DELF',
-            target_level: 'B1',
-          })
-          .then(({ access_token }) => {
-            localStorage.setItem('backend_token', access_token);
-            setState({ ready: true, error: null });
-          });
-      })
-      .catch(err => {
-        setState({ ready: false, error: err.message });
-      });
+    loginOrRegister().catch(err => setState({ ready: false, error: err.message }));
   }, [user]);
 
   // Clear backend token on sign-out
