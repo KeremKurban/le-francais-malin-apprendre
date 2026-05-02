@@ -133,8 +133,8 @@ export class SupabaseUserManager {
     if (!profiles) return [];
 
     const leaderboard: LeaderboardEntry[] = profiles.map(profile => {
-      const totalScore = profile.user_progress?.reduce((sum: number, progress: any) => sum + progress.best_score, 0) || 0;
-      const masteredTopics = profile.user_progress?.filter((progress: any) => progress.mastery_level >= 3).length || 0;
+      const totalScore = profile.user_progress?.reduce((sum: number, progress: { best_score?: number }) => sum + (progress.best_score ?? 0), 0) || 0;
+      const masteredTopics = profile.user_progress?.filter((progress: { mastery_level?: number }) => (progress.mastery_level ?? 0) >= 3).length || 0;
 
       return {
         id: profile.id,
@@ -170,11 +170,11 @@ export class SupabaseUserManager {
       .select('achievement_type')
       .eq('user_id', user.id);
 
-    return achievements ? achievements.map((a: any) => a.achievement_type) : [];
+    return achievements ? achievements.map((a: { achievement_type: string }) => a.achievement_type) : [];
   }
 
   // Add a new badge (achievement) for the user
-  static async addUserBadge(achievementType: string, achievementData: any = null): Promise<void> {
+  static async addUserBadge(achievementType: string, achievementData: Record<string, unknown> | null = null): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -206,7 +206,7 @@ export class SupabaseUserManager {
     let totalPoints = 0;
     
     if (sessions && sessions.length > 0) {
-      totalPoints = sessions.reduce((sum: number, s: any) => sum + (s.total_points || 0), 0);
+      totalPoints = sessions.reduce((sum: number, s: { total_points?: number }) => sum + (s.total_points || 0), 0);
       
       for (const session of sessions) {
         if (!session.session_start) continue;
@@ -270,7 +270,7 @@ export class SupabaseUserManager {
   }
 
   // Get learning insights for adaptive recommendations
-  static async getLearningInsights(): Promise<any[]> {
+  static async getLearningInsights(): Promise<Record<string, unknown>[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 

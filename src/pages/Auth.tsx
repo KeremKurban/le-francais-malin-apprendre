@@ -59,8 +59,8 @@ const Auth = () => {
           description: "Vérifiez votre email pour confirmer votre compte.",
         });
       }
-    } catch (error: any) {
-      if (error.message.includes('User already registered')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes('User already registered')) {
         setError('Cet email est déjà utilisé. Essayez de vous connecter.');
       } else if (error.message.includes('Invalid login credentials')) {
         setError('Email ou mot de passe incorrect.');

@@ -141,7 +141,7 @@ const Index = () => {
             onBack={() => setCurrentView('topics')}
           />
         );
-      case 'progress':
+      case 'progress': {
         // Create proper progress dashboard data
         if (!userProfile) return null;
         const progressDashboardData = {
@@ -154,6 +154,7 @@ const Index = () => {
           )
         };
         return <ProgressDashboard userProgress={progressDashboardData} />;
+      }
       case 'leaderboard':
         return <Leaderboard />;
       case 'mistakes':
