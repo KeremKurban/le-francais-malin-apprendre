@@ -42,8 +42,8 @@ class TestExtractJson:
         assert ev_extract(json.dumps(payload)) == payload
 
     def test_truncated_json_salvaged(self):
-        # Simulates model hitting max_tokens before closing braces
-        truncated = '{"score": 72, "overall_feedback": "Bien essayé.", "strengths": ["Bonne structure"'
+        # Simulates model hitting max_tokens mid-object (arrays are complete, root braces missing)
+        truncated = '{"score": 72, "overall_feedback": "Bien essayé.", "strengths": ["Bonne structure"], "improvements"'
         result = ev_extract(truncated)
         assert result["score"] == 72
         assert result["overall_feedback"] == "Bien essayé."
