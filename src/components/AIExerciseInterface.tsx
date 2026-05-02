@@ -19,6 +19,29 @@ interface AIExerciseInterfaceProps {
 
 type Phase = 'exercise' | 'evaluating' | 'feedback' | 'next_step';
 
+interface ExercisePersistedState {
+  phase: Phase;
+  exercise: Exercise | null;
+  userResponse: string;
+  evaluation: EvaluationResult | null;
+  attemptNumber: number;
+  sessionScore: number[];
+}
+
+const EXERCISE_STATE_KEY = 'ai_exercise_state';
+
+function loadPersistedExerciseState(sessionId: string): ExercisePersistedState | null {
+  try {
+    const raw = localStorage.getItem(EXERCISE_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Only restore if it belongs to the same session
+    return parsed.sessionId === sessionId ? parsed.state : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function AIExerciseInterface({
   sessionId,
   examType,
@@ -27,17 +50,30 @@ export default function AIExerciseInterface({
   onComplete,
   onBack,
 }: AIExerciseInterfaceProps) {
-  const [phase, setPhase] = useState<Phase>('exercise');
-  const [exercise, setExercise] = useState<Exercise | null>(null);
-  const [userResponse, setUserResponse] = useState('');
-  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
-  const [attemptNumber, setAttemptNumber] = useState(1);
-  const [sessionScore, setSessionScore] = useState<number[]>([]);
+  const persisted = loadPersistedExerciseState(sessionId);
+
+  const [phase, setPhase] = useState<Phase>(persisted?.phase ?? 'exercise');
+  const [exercise, setExercise] = useState<Exercise | null>(persisted?.exercise ?? null);
+  const [userResponse, setUserResponse] = useState(persisted?.userResponse ?? '');
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(persisted?.evaluation ?? null);
+  const [attemptNumber, setAttemptNumber] = useState(persisted?.attemptNumber ?? 1);
+  const [sessionScore, setSessionScore] = useState<number[]>(persisted?.sessionScore ?? []);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Persist exercise state to survive tab switches
   useEffect(() => {
-    loadExercise('writing_prompt');
+    if (phase === 'evaluating') return; // don't persist mid-flight state
+    localStorage.setItem(EXERCISE_STATE_KEY, JSON.stringify({
+      sessionId,
+      state: { phase, exercise, userResponse, evaluation, attemptNumber, sessionScore },
+    }));
+  }, [phase, exercise, userResponse, evaluation, attemptNumber, sessionScore, sessionId]);
+
+  useEffect(() => {
+    if (!persisted?.exercise) {
+      loadExercise('writing_prompt');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -47,6 +83,7 @@ export default function AIExerciseInterface({
     setUserResponse('');
     setEvaluation(null);
     setAttemptNumber(1);
+    localStorage.removeItem(EXERCISE_STATE_KEY);
     try {
       const ex = await api.generateExercise({
         exam_type: examType,
@@ -138,7 +175,7 @@ export default function AIExerciseInterface({
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack}>←</Button>
+          <Button variant="ghost" size="sm" onClick={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onBack(); }}>←</Button>
           <Badge variant="outline">{examType}</Badge>
           <Badge variant="outline">{level}</Badge>
           {exercise && <Badge variant="outline">{exercise.difficulty}</Badge>}
@@ -259,7 +296,7 @@ export default function AIExerciseInterface({
               evaluation={evaluation}
               onNextStep={handleNextStep}
               onNewExercise={() => loadExercise()}
-              onFinish={() => onComplete(averageScore)}
+              onFinish={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onComplete(averageScore); }}
             />
           )}
         </>

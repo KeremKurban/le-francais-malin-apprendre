@@ -41,6 +41,20 @@ class TestExtractJson:
         payload = {"score": 90}
         assert ev_extract(json.dumps(payload)) == payload
 
+    def test_truncated_json_salvaged(self):
+        # Simulates model hitting max_tokens before closing braces
+        truncated = '{"score": 72, "overall_feedback": "Bien essayé.", "strengths": ["Bonne structure"'
+        result = ev_extract(truncated)
+        assert result["score"] == 72
+        assert result["overall_feedback"] == "Bien essayé."
+        assert result["strengths"] == ["Bonne structure"]
+
+    def test_nested_json_in_fence_parsed_correctly(self):
+        # Greedy match must capture full nested object, not stop at first }
+        payload = {"score": 80, "errors": [{"error_type": "grammar"}]}
+        text = f"```json\n{json.dumps(payload)}\n```"
+        assert ev_extract(text) == payload
+
 
 # ── _fallback_evaluation ──────────────────────────────────────────────────────
 
@@ -53,10 +67,12 @@ class TestFallbackEvaluation:
         assert isinstance(result["next_steps"], list)
         assert result["next_steps"][0]["type"] == "retry"
 
-    def test_truncates_long_text(self):
+    def test_does_not_expose_raw_text(self):
         long_text = "x" * 1000
         result = _fallback_evaluation(long_text)
-        assert len(result["overall_feedback"]) <= 800
+        # fallback must never forward raw model output to the user
+        assert result["overall_feedback"] != long_text
+        assert result["overall_feedback"] != long_text[:800]
 
     def test_empty_content(self):
         result = _fallback_evaluation("")

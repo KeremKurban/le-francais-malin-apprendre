@@ -39,6 +39,17 @@ def _mlflow_log_safe(filename: str, text: str) -> None:
         pass
 
 
+def _extract_string_array(text: str, key: str) -> list:
+    """Extract a JSON string array from a (possibly truncated) JSON blob."""
+    m = re.search(rf'"{key}"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+    if not m:
+        return []
+    try:
+        return json.loads(f"[{m.group(1)}]")
+    except json.JSONDecodeError:
+        return []
+
+
 def _extract_json(text: str) -> dict:
     """Try several strategies to pull a JSON object out of a model response."""
     text = text.strip()
@@ -48,7 +59,7 @@ def _extract_json(text: str) -> dict:
     except json.JSONDecodeError:
         pass
     # 2. Fenced code block  ```json ... ``` or ``` ... ```
-    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    fence = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
     if fence:
         try:
             return json.loads(fence.group(1))
@@ -61,17 +72,32 @@ def _extract_json(text: str) -> dict:
             return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
+    # 4. Truncated JSON (model hit max_tokens mid-stream) — extract what arrived
+    score_m = re.search(r'"score"\s*:\s*(\d+)', text)
+    fb_m = re.search(r'"overall_feedback"\s*:\s*"((?:[^"\\]|\\.)+)"', text)
+    if score_m or fb_m:
+        return {
+            "score": int(score_m.group(1)) if score_m else 50,
+            "overall_feedback": fb_m.group(1).replace('\\"', '"') if fb_m else "Évaluation partielle reçue.",
+            "strengths": _extract_string_array(text, "strengths"),
+            "improvements": _extract_string_array(text, "improvements"),
+            "errors": [],
+            "next_steps": [{"type": "retry", "description": "La réponse du modèle était incomplète. Réessayez.", "exercise_hint": None}],
+        }
     raise ValueError(f"No valid JSON found in model response: {text[:200]!r}")
 
 
 def _fallback_evaluation(raw: str) -> dict:
-    """Return a minimal valid evaluation when the model ignores the JSON format."""
-    feedback = raw.strip()[:800] if raw.strip() else "Évaluation non disponible."
+    """Return a minimal valid evaluation when all JSON extraction strategies fail."""
+    if not raw.strip():
+        feedback = "Évaluation non disponible."
+    else:
+        feedback = "Le modèle n'a pas retourné une évaluation structurée. Réessayez."
     return {
         "score": 50,
         "overall_feedback": feedback,
         "strengths": [],
-        "improvements": ["Le modèle n'a pas retourné une évaluation structurée. Réessayez."],
+        "improvements": ["Impossible d'analyser la réponse du modèle."],
         "errors": [],
         "next_steps": [
             {"type": "retry", "description": "Soumettez à nouveau votre réponse.", "exercise_hint": None}
@@ -125,7 +151,7 @@ async def evaluate_response(
 
         api_response = await client.chat.completions.create(
             model=settings.openrouter_model,
-            max_tokens=2048,
+            max_tokens=4096,
             messages=messages,
         )
 
