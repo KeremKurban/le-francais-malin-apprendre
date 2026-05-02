@@ -1,0 +1,38 @@
+name: Claude Code Assistant
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  # Manual trigger: paste logs / error message in the prompt field
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Task or error logs for Claude to investigate and fix"
+        required: true
+        type: string
+
+jobs:
+  claude:
+    # On comments: only run when @claude is mentioned
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # For workflow_dispatch, use the typed prompt; for comments, the action
+          # reads the comment body automatically.
+          direct_prompt: ${{ github.event_name == 'workflow_dispatch' && inputs.prompt || '' }}
