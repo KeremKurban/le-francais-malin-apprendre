@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, field_serializer
 
 
 class RegisterRequest(BaseModel):
@@ -20,11 +22,15 @@ class TokenResponse(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: str
+    id: UUID
     email: str
     username: str
     target_exam: str
     target_level: str
+
+    @field_serializer("id")
+    def serialize_id(self, v: UUID) -> str:
+        return str(v)
 
     class Config:
         from_attributes = True

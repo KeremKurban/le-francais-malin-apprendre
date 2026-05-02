@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Integer, ForeignKey, Enum as SAEnum, DateTime, UniqueConstraint
+from sqlalchemy import Integer, ForeignKey, JSON, Enum as SAEnum, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
 
@@ -19,7 +19,7 @@ class Weakness(Base):
     severity: Mapped[str] = mapped_column(
         SAEnum("low", "medium", "high", name="weakness_severity_enum"), default="medium"
     )
-    error_type_counts: Mapped[dict] = mapped_column(JSONB, default=dict)
+    error_type_counts: Mapped[dict] = mapped_column(JSON, default=dict)
     last_seen: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

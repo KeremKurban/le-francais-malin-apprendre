@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Text, ForeignKey, Enum as SAEnum, Integer
+from sqlalchemy import String, Text, ForeignKey, Enum as SAEnum, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import DateTime
 
 from app.core.database import Base
@@ -37,8 +37,8 @@ class Exercise(Base):
     )
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     context: Mapped[str] = mapped_column(Text, default="")
-    expected_elements: Mapped[list] = mapped_column(JSONB, default=list)
-    rubric: Mapped[dict] = mapped_column(JSONB, default=dict)
+    expected_elements: Mapped[list] = mapped_column(JSON, default=list)
+    rubric: Mapped[dict] = mapped_column(JSON, default=dict)
     prompt_version: Mapped[str] = mapped_column(String(50), default="v1")
     difficulty: Mapped[str] = mapped_column(
         SAEnum("easy", "medium", "hard", name="difficulty_enum"), default="medium"

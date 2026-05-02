@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
 
@@ -17,8 +17,8 @@ class ExperimentRun(Base):
     prompt_version: Mapped[str] = mapped_column(String(50), nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     eval_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    metrics: Mapped[dict] = mapped_column(JSONB, default=dict)
-    params: Mapped[dict] = mapped_column(JSONB, default=dict)
+    metrics: Mapped[dict] = mapped_column(JSON, default=dict)
+    params: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
