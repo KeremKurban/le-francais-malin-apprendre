@@ -1,13 +1,14 @@
 """
 Response evaluation service.
 Calls OpenAI API to evaluate user responses, stores errors, and logs to MLflow.
+LLM call traces (prompt, response, tokens, latency) are captured automatically
+by mlflow.openai.autolog() which is enabled in mlflow_service at startup.
 """
 import json
 import re
 import uuid
 from typing import Dict, List
 
-import mlflow
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -29,14 +30,6 @@ client = AsyncOpenAI(
     api_key=settings.openrouter_api_key,
     base_url=settings.openrouter_base_url,
 )
-
-
-def _mlflow_log_safe(filename: str, text: str) -> None:
-    """Log a text artifact to the active MLflow run, silently ignoring failures."""
-    try:
-        mlflow.log_text(text, filename)
-    except Exception:
-        pass
 
 
 def _extract_string_array(text: str, key: str) -> list:
@@ -146,9 +139,6 @@ async def evaluate_response(
         eval_type="response_evaluation",
         params=params,
     ) as (result_holder, run_id):
-        # Log the full prompt so it's visible in the MLflow UI
-        _mlflow_log_safe("prompt_messages.json", json.dumps(messages, ensure_ascii=False, indent=2))
-
         api_response = await client.chat.completions.create(
             model=settings.openrouter_model,
             max_tokens=4096,
@@ -159,9 +149,6 @@ async def evaluate_response(
         if not content:
             finish_reason = api_response.choices[0].finish_reason
             raise ValueError(f"Model returned no text content (finish_reason={finish_reason!r}). Check OPENROUTER_MODEL and API key.")
-
-        # Log the raw model response before any parsing
-        _mlflow_log_safe("model_response_raw.txt", content)
 
         try:
             evaluation = _extract_json(content)

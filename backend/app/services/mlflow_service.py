@@ -2,6 +2,10 @@
 MLflow tracking service.
 All AI evaluation calls go through here so every run is logged centrally.
 MLflow failures are non-fatal — the app continues without tracking.
+
+mlflow.openai.autolog() is enabled at init-time so every openai SDK call
+(both exercise generation and evaluation) is automatically logged as an
+MLflow trace with full prompt, response, token usage, and latency.
 """
 import json
 import time
@@ -20,6 +24,11 @@ class MLflowService:
         try:
             mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
             mlflow.set_experiment(settings.mlflow_experiment_name)
+            # Auto-instrument the OpenAI SDK — captures every LLM call as a
+            # trace (inputs, outputs, token usage, latency) without any manual
+            # logging code.  Works with AsyncOpenAI and OpenRouter-compatible
+            # clients because patching happens at the SDK level.
+            mlflow.openai.autolog(log_traces=True)
         except Exception as exc:
             print(f"[mlflow] init warning (non-fatal): {exc}")
 
