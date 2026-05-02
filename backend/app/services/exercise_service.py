@@ -73,7 +73,7 @@ async def generate_exercise(
 
     response = await client.chat.completions.create(
         model=settings.openrouter_model,
-        max_tokens=1024,
+        max_tokens=2048,
         messages=[
             {"role": "system", "content": EXERCISE_SYSTEM_PROMPT_V1},
             {"role": "user", "content": user_message},

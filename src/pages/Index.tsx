@@ -158,8 +158,6 @@ const Index = () => {
         return <Leaderboard />;
       case 'mistakes':
         return <Mistakes />;
-      case 'ai':
-        return <AILearning />;
       default:
         return <DashboardView userProfile={userProfile} userProgress={userProgress} setCurrentView={setCurrentView} />;
     }
@@ -313,7 +311,11 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderView()}
+        {/* AILearning stays mounted to preserve session state across tab switches */}
+        <div style={{ display: currentView === 'ai' ? 'block' : 'none' }}>
+          <AILearning />
+        </div>
+        {currentView !== 'ai' && renderView()}
       </main>
     </div>
   );
