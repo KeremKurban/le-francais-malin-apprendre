@@ -153,7 +153,7 @@ const Index = () => {
             Object.entries(userProgress).map(([topicId, progress]) => [topicId, progress.best_score || 0])
           )
         };
-        return <ProgressDashboard userProgress={progressDashboardData} />;
+        return <ProgressDashboard userProgress={progressDashboardData} onGoToExercise={() => setCurrentView('ai')} />;
       }
       case 'leaderboard':
         return <Leaderboard />;
@@ -256,7 +256,7 @@ const Index = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden border-t border-blue-100">
-          <div className="px-4 py-2 flex space-x-2 overflow-x-auto">
+          <div className="px-4 py-2 flex flex-nowrap space-x-2 overflow-x-auto scrollbar-none">
             <Button 
               variant={currentView === 'dashboard' ? 'default' : 'ghost'}
               onClick={() => setCurrentView('dashboard')}
@@ -337,20 +337,20 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
   const masteredTopics = Object.values(userProgress).filter(p => p.mastery_level >= 3).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 page-enter">
       {/* Welcome Section */}
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
           Bonjour {userProfile?.name} ! Prêt à améliorer votre français ?
         </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
           Maîtrisez la grammaire française avec des exercices adaptatifs pour les niveaux A2/B1
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white touch-manipulation">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -362,7 +362,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white touch-manipulation">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -374,7 +374,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-orange-500 text-white">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-orange-500 text-white touch-manipulation">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -386,7 +386,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white touch-manipulation">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -400,8 +400,8 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 touch-manipulation">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Continuer l'apprentissage</CardTitle>
             <CardDescription>
@@ -409,16 +409,16 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('topics')}
-              className="w-full bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700"
+              className="w-full bg-[#0055A4] hover:bg-[#003d7a] text-white transition-colors"
             >
               Commencer les exercices
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 touch-manipulation">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Voir le classement</CardTitle>
             <CardDescription>
@@ -426,7 +426,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('leaderboard')}
               variant="outline"
               className="w-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
@@ -436,7 +436,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 touch-manipulation">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Analyser vos erreurs</CardTitle>
             <CardDescription>
@@ -444,7 +444,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('mistakes')}
               variant="outline"
               className="w-full border-2 border-red-600 text-red-600 hover:bg-red-50"

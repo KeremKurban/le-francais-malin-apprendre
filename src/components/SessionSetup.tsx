@@ -42,10 +42,10 @@ export default function SessionSetup({ onStart }: Props) {
             <button
               key={exam}
               onClick={() => setExamType(exam)}
-              className={`rounded-xl border-2 p-4 text-left transition-all ${
+              className={`rounded-xl border-2 p-4 text-left transition-all touch-manipulation focus-visible:ring-2 focus-visible:ring-[#0055A4] focus-visible:outline-none ${
                 examType === exam
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-200'
+                  ? 'border-[#0055A4] bg-blue-50'
+                  : 'border-gray-200 hover:border-[#0055A4]/40'
               }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -70,10 +70,10 @@ export default function SessionSetup({ onStart }: Props) {
             <button
               key={lvl}
               onClick={() => setLevel(lvl)}
-              className={`rounded-xl border-2 p-4 text-left transition-all ${
+              className={`rounded-xl border-2 p-4 text-left transition-all touch-manipulation focus-visible:ring-2 focus-visible:ring-[#0055A4] focus-visible:outline-none ${
                 level === lvl
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 hover:border-indigo-200'
+                  ? 'border-[#0055A4] bg-indigo-50'
+                  : 'border-gray-200 hover:border-[#0055A4]/40'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -91,16 +91,16 @@ export default function SessionSetup({ onStart }: Props) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Button
             variant="outline"
-            className="h-auto py-4 flex-col gap-2"
+            className="h-auto py-4 flex-col gap-2 touch-manipulation focus-visible:ring-2 focus-visible:ring-[#0055A4] hover:border-[#0055A4] hover:text-[#0055A4] active:scale-95 transition-transform"
             onClick={() => onStart({ examType, level, mode: 'free' })}
           >
-            <PenLine className="w-6 h-6 text-blue-600" />
+            <PenLine className="w-6 h-6 text-[#0055A4]" />
             <span className="font-semibold">Pratique libre</span>
             <span className="text-xs text-gray-500 font-normal">Exercice généré immédiatement</span>
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-4 flex-col gap-2"
+            className="h-auto py-4 flex-col gap-2 touch-manipulation focus-visible:ring-2 focus-visible:ring-[#0055A4] hover:border-[#0055A4] hover:text-[#0055A4] active:scale-95 transition-transform"
             onClick={() => onStart({ examType, level, mode: 'by_topic' })}
           >
             <Map className="w-6 h-6 text-green-600" />
@@ -109,7 +109,7 @@ export default function SessionSetup({ onStart }: Props) {
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-4 flex-col gap-2"
+            className="h-auto py-4 flex-col gap-2 touch-manipulation focus-visible:ring-2 focus-visible:ring-[#0055A4] hover:border-[#0055A4] hover:text-[#0055A4] active:scale-95 transition-transform"
             onClick={() => onStart({ examType, level, mode: 'mock_exam' })}
           >
             <Trophy className="w-6 h-6 text-purple-600" />

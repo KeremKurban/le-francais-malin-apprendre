@@ -74,6 +74,7 @@ const ExerciseActions = ({
           variant="outline"
           onClick={onShowHint}
           disabled={showHint}
+          className="hover:scale-105 active:scale-95 transition-transform touch-manipulation focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
         >
           <Book className="w-4 h-4 mr-2" />
           Indice
@@ -81,15 +82,18 @@ const ExerciseActions = ({
 
         <div className="space-x-3">
           {!showResult ? (
-            <Button 
+            <Button
               onClick={onSubmit}
               disabled={!canSubmit}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-[#0055A4] hover:bg-[#003d7a] text-white hover:scale-105 active:scale-95 transition-transform touch-manipulation focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             >
               Vérifier
             </Button>
           ) : (
-            <Button onClick={onNext} className="bg-green-600 hover:bg-green-700">
+            <Button
+              onClick={onNext}
+              className="bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95 transition-transform touch-manipulation focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:outline-none"
+            >
               {isLastExercise ? 'Terminer' : 'Suivant'}
             </Button>
           )}
