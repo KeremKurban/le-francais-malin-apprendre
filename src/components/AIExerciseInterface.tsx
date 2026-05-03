@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Send, RotateCcw, BookOpen, MessageSquare, ChevronRight } from 'lucide-react';
-import { api, Exercise, EvaluationResult, NextStep } from '@/api/backendClient';
+import { Loader2, Send, RotateCcw, MessageSquare } from 'lucide-react';
+import { api, Exercise, EvaluationResult, NextStep, AsyncEvaluationStatus } from '@/api/backendClient';
+import { useToast } from '@/hooks/use-toast';
 import EvaluationFeedback from './EvaluationFeedback';
+import ExerciseRenderer from './exercises/ExerciseRenderer';
 
 interface AIExerciseInterfaceProps {
   sessionId: string;
@@ -17,7 +19,13 @@ interface AIExerciseInterfaceProps {
   onBack: () => void;
 }
 
-type Phase = 'exercise' | 'evaluating' | 'feedback' | 'next_step';
+type Phase = 'exercise' | 'evaluating' | 'feedback' | 'next_step' | 'finishing';
+
+interface PendingEvaluation {
+  evaluationId: string;
+  exerciseId: string;
+  exercisePrompt: string;
+}
 
 interface ExercisePersistedState {
   phase: Phase;
@@ -51,6 +59,7 @@ export default function AIExerciseInterface({
   onBack,
 }: AIExerciseInterfaceProps) {
   const persisted = loadPersistedExerciseState(sessionId);
+  const { toast } = useToast();
 
   const [phase, setPhase] = useState<Phase>(persisted?.phase ?? 'exercise');
   const [exercise, setExercise] = useState<Exercise | null>(persisted?.exercise ?? null);
@@ -61,9 +70,22 @@ export default function AIExerciseInterface({
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Async eval state
+  const [pendingEvaluations, setPendingEvaluations] = useState<PendingEvaluation[]>([]);
+  const [prefetchedExercise, setPrefetchedExercise] = useState<Exercise | null>(null);
+  const pollingIntervals = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+
+  // Cleanup polling intervals on unmount
+  useEffect(() => {
+    return () => {
+      pollingIntervals.current.forEach(interval => clearInterval(interval));
+      pollingIntervals.current.clear();
+    };
+  }, []);
+
   // Persist exercise state to survive tab switches
   useEffect(() => {
-    if (phase === 'evaluating') return; // don't persist mid-flight state
+    if (phase === 'evaluating' || phase === 'finishing') return; // don't persist mid-flight state
     localStorage.setItem(EXERCISE_STATE_KEY, JSON.stringify({
       sessionId,
       state: { phase, exercise, userResponse, evaluation, attemptNumber, sessionScore },
@@ -92,6 +114,7 @@ export default function AIExerciseInterface({
         mode: 'writing',
         topic_id: topicId,
         context,
+        use_cache: true,
       });
       setExercise(ex);
       setPhase('exercise');
@@ -102,24 +125,108 @@ export default function AIExerciseInterface({
     }
   };
 
+  const prefetchNextExercise = async (exerciseType = 'writing_prompt') => {
+    try {
+      const ex = await api.generateExercise({
+        exam_type: examType,
+        level,
+        exercise_type: exerciseType,
+        mode: 'writing',
+        topic_id: topicId,
+        use_cache: true,
+      });
+      setPrefetchedExercise(ex);
+    } catch {
+      // Silently ignore prefetch errors
+    }
+  };
+
+  const startPollingEvaluation = (evaluationId: string) => {
+    if (pollingIntervals.current.has(evaluationId)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const status: AsyncEvaluationStatus = await api.getEvaluationStatus(evaluationId);
+        if (status.status === 'done' || status.status === 'failed') {
+          clearInterval(interval);
+          pollingIntervals.current.delete(evaluationId);
+
+          setPendingEvaluations(prev => prev.filter(p => p.evaluationId !== evaluationId));
+
+          if (status.status === 'done' && status.result) {
+            setSessionScore(prev => [...prev, status.result!.score]);
+            toast({
+              title: 'Réponse précédente évaluée',
+              description: `Score : ${Math.round(status.result!.score)}%`,
+            });
+          }
+        }
+      } catch {
+        // Ignore polling errors silently
+      }
+    }, 2000);
+
+    pollingIntervals.current.set(evaluationId, interval);
+  };
+
   const submitResponse = async () => {
     if (!exercise || !userResponse.trim()) return;
     setPhase('evaluating');
     setError(null);
+
     try {
-      const result = await api.evaluate({
+      // Fire async evaluation
+      const { evaluation_id } = await api.evaluateAsync({
         exercise_id: exercise.id,
         session_id: sessionId,
         response_content: userResponse,
         attempt_number: attemptNumber,
       });
-      setEvaluation(result.evaluation);
-      setSessionScore(prev => [...prev, result.evaluation.score]);
-      setPhase('feedback');
+
+      // Track pending evaluation
+      const pending: PendingEvaluation = {
+        evaluationId: evaluation_id,
+        exerciseId: exercise.id,
+        exercisePrompt: exercise.prompt,
+      };
+      setPendingEvaluations(prev => [...prev, pending]);
+      startPollingEvaluation(evaluation_id);
+
+      // Prefetch next exercise concurrently
+      prefetchNextExercise(exercise.exercise_type);
+
+      // Advance to next question right away using prefetched if available
+      const nextEx = prefetchedExercise;
+      setPrefetchedExercise(null);
+      if (nextEx) {
+        setExercise(nextEx);
+        setUserResponse('');
+        setEvaluation(null);
+        setAttemptNumber(1);
+        setPhase('exercise');
+      } else {
+        await loadExercise(exercise.exercise_type);
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur lors de l\'évaluation');
+      setError(e instanceof Error ? e.message : "Erreur lors de l'envoi");
       setPhase('exercise');
     }
+  };
+
+  const handleFinish = async () => {
+    if (pendingEvaluations.length > 0) {
+      setPhase('finishing');
+      // Wait for all pending evaluations to complete (max 30s)
+      const deadline = Date.now() + 30_000;
+      while (pendingEvaluations.length > 0 && Date.now() < deadline) {
+        await new Promise(res => setTimeout(res, 500));
+      }
+    }
+    localStorage.removeItem(EXERCISE_STATE_KEY);
+    const avg = sessionScore.length
+      ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
+      : 0;
+    onComplete(avg);
   };
 
   const handleNextStep = async (step: NextStep) => {
@@ -170,6 +277,18 @@ export default function AIExerciseInterface({
     );
   }
 
+  if (phase === 'finishing') {
+    return (
+      <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
+        <Loader2 className="animate-spin w-8 h-8 mx-auto text-blue-600 mb-4" />
+        <p className="text-gray-600">Finalisation…</p>
+        <p className="text-sm text-gray-400">
+          {pendingEvaluations.length} évaluation{pendingEvaluations.length > 1 ? 's' : ''} en attente
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header bar */}
@@ -179,6 +298,11 @@ export default function AIExerciseInterface({
           <Badge variant="outline">{examType}</Badge>
           <Badge variant="outline">{level}</Badge>
           {exercise && <Badge variant="outline">{exercise.difficulty}</Badge>}
+          {pendingEvaluations.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {pendingEvaluations.length} éval. en cours…
+            </Badge>
+          )}
         </div>
         {sessionScore.length > 0 && (
           <div className="text-sm text-gray-600">
@@ -234,9 +358,18 @@ export default function AIExerciseInterface({
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-wrap">
-                {exercise.prompt}
-              </p>
+              {exercise.content ? (
+                <ExerciseRenderer
+                  content={exercise.content}
+                  onAnswerChange={setUserResponse}
+                  answer={userResponse}
+                  showResult={phase === 'feedback'}
+                />
+              ) : (
+                <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-wrap">
+                  {exercise.prompt}
+                </p>
+              )}
               {attemptNumber > 1 && (
                 <p className="mt-2 text-sm text-amber-600">
                   Tentative {attemptNumber} — réessayez en tenant compte des corrections précédentes.
@@ -245,8 +378,8 @@ export default function AIExerciseInterface({
             </CardContent>
           </Card>
 
-          {/* Response input */}
-          {(phase === 'exercise' || phase === 'evaluating') && (
+          {/* Response input — only show standalone textarea when there's no typed content renderer */}
+          {(phase === 'exercise' || phase === 'evaluating') && !exercise.content && (
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -262,23 +395,73 @@ export default function AIExerciseInterface({
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400">{userResponse.length} caractères</span>
-                  <Button
-                    onClick={submitResponse}
-                    disabled={!userResponse.trim() || phase === 'evaluating'}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {phase === 'evaluating' ? (
-                      <>
-                        <Loader2 className="animate-spin w-4 h-4 mr-2" />
-                        Évaluation…
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Soumettre
-                      </>
+                  <div className="flex gap-2">
+                    {sessionScore.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleFinish}
+                        disabled={phase === 'evaluating'}
+                      >
+                        Terminer
+                      </Button>
                     )}
-                  </Button>
+                    <Button
+                      onClick={submitResponse}
+                      disabled={!userResponse.trim() || phase === 'evaluating'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {phase === 'evaluating' ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                          Envoi…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Soumettre
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Submit button when typed content renderer handles the input */}
+          {(phase === 'exercise' || phase === 'evaluating') && exercise.content && (
+            <Card>
+              <CardContent className="pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{userResponse.length} caractères</span>
+                  <div className="flex gap-2">
+                    {sessionScore.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleFinish}
+                        disabled={phase === 'evaluating'}
+                      >
+                        Terminer
+                      </Button>
+                    )}
+                    <Button
+                      onClick={submitResponse}
+                      disabled={!userResponse.trim() || phase === 'evaluating'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {phase === 'evaluating' ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                          Envoi…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Soumettre
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 {phase === 'evaluating' && (
                   <div className="space-y-2">
@@ -296,7 +479,7 @@ export default function AIExerciseInterface({
               evaluation={evaluation}
               onNextStep={handleNextStep}
               onNewExercise={() => loadExercise()}
-              onFinish={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onComplete(averageScore); }}
+              onFinish={handleFinish}
             />
           )}
         </>

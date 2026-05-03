@@ -1,11 +1,19 @@
+import asyncio
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
 from app.core.deps import DB, CurrentUser
+from app.models.async_evaluation import AsyncEvaluation
 from app.models.exercise import Exercise
 from app.models.response import UserResponse
 from app.models.session import LearningSession
-from app.schemas.evaluation import EvaluateRequest, EvaluateResponse, EvaluationResult, ErrorDetail, NextStep
+from app.schemas.evaluation import (
+    EvaluateRequest, EvaluateResponse, EvaluationResult, ErrorDetail, NextStep,
+    AsyncEvaluationAccepted, AsyncEvaluationStatus,
+)
+from app.services.async_eval_service import run_evaluation_background, log_task_error
 from app.services.evaluation_service import evaluate_response
 from app.services.weakness_service import update_weakness, update_skill_level
 from app.services.recommendation_service import refresh_recommendations
@@ -91,4 +99,53 @@ async def evaluate(body: EvaluateRequest, db: DB, current_user: CurrentUser):
         ),
         weaknesses_updated=bool(error_type_counts),
         skill_levels_updated=True,
+    )
+
+
+@router.post("/evaluate-async", response_model=AsyncEvaluationAccepted, status_code=202)
+async def evaluate_async_endpoint(body: EvaluateRequest, db: DB, current_user: CurrentUser):
+    # validate exercise exists
+    exercise = (await db.execute(select(Exercise).where(Exercise.id == body.exercise_id))).scalar_one_or_none()
+    if not exercise:
+        raise HTTPException(404, "Exercise not found")
+    session = (await db.execute(
+        select(LearningSession).where(LearningSession.id == body.session_id, LearningSession.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    response = UserResponse(
+        exercise_id=exercise.id, session_id=session.id, user_id=current_user.id,
+        content=body.response_content, attempt_number=body.attempt_number,
+    )
+    db.add(response)
+    await db.flush()
+
+    ae = AsyncEvaluation(
+        user_id=current_user.id, session_id=session.id,
+        exercise_id=exercise.id, response_id=response.id,
+        response_content=body.response_content, attempt_number=body.attempt_number,
+    )
+    db.add(ae)
+    await db.flush()
+    eval_id = ae.id
+
+    task = asyncio.create_task(run_evaluation_background(eval_id))
+    task.add_done_callback(log_task_error)
+
+    return AsyncEvaluationAccepted(evaluation_id=eval_id, response_id=response.id)
+
+
+@router.get("/{evaluation_id}", response_model=AsyncEvaluationStatus)
+async def get_evaluation_status(evaluation_id: UUID, db: DB, current_user: CurrentUser):
+    ae = (await db.execute(
+        select(AsyncEvaluation).where(AsyncEvaluation.id == evaluation_id, AsyncEvaluation.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not ae:
+        raise HTTPException(404, "Evaluation not found")
+    return AsyncEvaluationStatus(
+        evaluation_id=ae.id, response_id=ae.response_id,
+        status=ae.status, result=ae.result if ae.result else None,
+        error_message=ae.error_message,
+        created_at=ae.created_at, completed_at=ae.completed_at,
     )

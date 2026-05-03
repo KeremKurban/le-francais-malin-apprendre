@@ -3,11 +3,13 @@ Exercise generation service.
 Calls OpenAI API with a versioned prompt and returns a structured exercise.
 """
 import json
+import logging
 import re
 import uuid
 from typing import Optional
 
 from openai import AsyncOpenAI
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -18,7 +20,13 @@ from app.prompts.exercise_prompts import (
     EXERCISE_SYSTEM_PROMPT_V1,
     EXERCISE_USER_TEMPLATE_V1,
     PROMPT_VERSION,
+    PROMPTS_V2,
+    EXERCISE_USER_TEMPLATE_V2,
+    PROMPT_VERSION_V2,
 )
+from app.schemas.exercise_content import ExerciseContent
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 client = AsyncOpenAI(
@@ -61,31 +69,65 @@ async def generate_exercise(
     """Generate an exercise via OpenAI API and persist it."""
     topic = await _resolve_topic(db, topic_id, exam_type, level)
 
-    user_message = EXERCISE_USER_TEMPLATE_V1.format(
-        exam_type=exam_type,
-        level=level,
-        topic_name=topic.name,
-        category=topic.category,
-        exercise_type=exercise_type,
-        mode=mode,
-        extra_context=extra_context or "Aucun contexte supplémentaire",
-    )
+    use_v2 = exercise_type in PROMPTS_V2
+
+    if use_v2:
+        system_prompt = PROMPTS_V2[exercise_type]
+        user_message = EXERCISE_USER_TEMPLATE_V2.format(
+            exercise_type=exercise_type,
+            exam_type=exam_type,
+            level=level,
+            topic_name=topic.name,
+            category=topic.category,
+            mode=mode,
+            extra_context=extra_context or "Aucun contexte supplémentaire",
+        )
+    else:
+        system_prompt = EXERCISE_SYSTEM_PROMPT_V1
+        user_message = EXERCISE_USER_TEMPLATE_V1.format(
+            exam_type=exam_type,
+            level=level,
+            topic_name=topic.name,
+            category=topic.category,
+            exercise_type=exercise_type,
+            mode=mode,
+            extra_context=extra_context or "Aucun contexte supplémentaire",
+        )
 
     response = await client.chat.completions.create(
         model=settings.openrouter_model,
         max_tokens=2048,
         messages=[
-            {"role": "system", "content": EXERCISE_SYSTEM_PROMPT_V1},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
     )
 
-    content = response.choices[0].message.content
-    if not content:
+    raw = response.choices[0].message.content
+    if not raw:
         finish_reason = response.choices[0].finish_reason
         raise ValueError(f"Model returned no text content (finish_reason={finish_reason!r}). Check OPENROUTER_MODEL and API key.")
 
-    data = _extract_json(content)
+    data = _extract_json(raw)
+
+    # Always enforce the requested exercise_type in the parsed data
+    data["exercise_type"] = exercise_type
+
+    # Attempt Pydantic v2 validation for typed content
+    validated_content: dict | None = None
+    if use_v2:
+        try:
+            validated = ExerciseContent.model_validate(data)  # type: ignore[attr-defined]
+            validated_content = validated.model_dump()
+        except ValidationError as exc:
+            logger.warning(
+                "ExerciseContent validation failed for type=%r: %s — falling back to v1 behaviour",
+                exercise_type,
+                exc,
+            )
+
+    # Extract prompt/context from validated content for backward compat
+    prompt, context, rubric, difficulty = _extract_legacy_fields(data, validated_content, exercise_type)
 
     exercise = Exercise(
         topic_id=topic.id,
@@ -93,16 +135,61 @@ async def generate_exercise(
         exam_type=exam_type,
         exercise_type=exercise_type,
         mode=mode,
-        prompt=data["prompt"],
-        context=data.get("context", ""),
+        prompt=prompt,
+        context=context,
         expected_elements=data.get("expected_elements", []),
-        rubric=data.get("rubric", {}),
-        prompt_version=PROMPT_VERSION,
-        difficulty=data.get("difficulty", "medium"),
+        rubric=rubric,
+        prompt_version=PROMPT_VERSION_V2 if use_v2 else PROMPT_VERSION,
+        difficulty=difficulty,
+        content=validated_content,
     )
     db.add(exercise)
     await db.flush()
     return exercise
+
+
+def _extract_legacy_fields(
+    data: dict,
+    validated_content: dict | None,
+    exercise_type: str,
+) -> tuple[str, str, dict, str]:
+    """Extract prompt, context, rubric and difficulty from raw or validated data."""
+    difficulty = data.get("difficulty", "medium")
+
+    if validated_content is not None:
+        rubric = validated_content.get("rubric", {})
+        difficulty = validated_content.get("difficulty", difficulty)
+        # Map typed fields to legacy prompt/context
+        if exercise_type == "writing_prompt":
+            prompt = validated_content.get("instruction", "")
+            context = validated_content.get("scenario", "")
+        elif exercise_type == "multiple_choice":
+            prompt = validated_content.get("question", "")
+            context = validated_content.get("explanation", "")
+        elif exercise_type == "reading_comprehension":
+            prompt = validated_content.get("passage", "")
+            context = ""
+        elif exercise_type == "error_correction":
+            prompt = validated_content.get("instruction", "Trouvez et corrigez les erreurs dans ce texte.")
+            context = validated_content.get("passage", "")
+        elif exercise_type == "fill_blank":
+            prompt = validated_content.get("template", "")
+            context = ""
+        elif exercise_type == "role_play":
+            prompt = validated_content.get("conversation_starter", "")
+            context = validated_content.get("scenario", "")
+        else:
+            prompt = data.get("prompt", "")
+            context = data.get("context", "")
+        return prompt, context, rubric, difficulty
+
+    # Fall back to v1 raw fields
+    return (
+        data.get("prompt", ""),
+        data.get("context", ""),
+        data.get("rubric", {}),
+        difficulty,
+    )
 
 
 async def _resolve_topic(

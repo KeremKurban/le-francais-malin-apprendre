@@ -1,6 +1,6 @@
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GenerateExerciseRequest(BaseModel):
@@ -10,6 +10,7 @@ class GenerateExerciseRequest(BaseModel):
     exercise_type: str = "writing_prompt"
     mode: str = "writing"
     context: Optional[str] = None
+    use_cache: bool = True
 
 
 class ExerciseOut(BaseModel):
@@ -24,6 +25,7 @@ class ExerciseOut(BaseModel):
     rubric: dict
     prompt_version: str
     difficulty: str
+    content: dict | None = None
 
     class Config:
         from_attributes = True

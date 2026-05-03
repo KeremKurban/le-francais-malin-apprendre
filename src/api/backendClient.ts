@@ -2,6 +2,9 @@
  * Typed client for the FastAPI backend.
  * All requests include the JWT from localStorage.
  */
+import type { ExerciseContent } from '../types/exercise';
+
+export type { ExerciseContent };
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -61,6 +64,7 @@ export const api = {
     exercise_type: string;
     mode: string;
     context?: string;
+    use_cache?: boolean;
   }) => request<Exercise>('/api/v1/exercises/generate', { method: 'POST', body: JSON.stringify(body) }),
 
   // Evaluations
@@ -70,6 +74,12 @@ export const api = {
     response_content: string;
     attempt_number: number;
   }) => request<EvaluationResponse>('/api/v1/evaluations/evaluate', { method: 'POST', body: JSON.stringify(body) }),
+
+  evaluateAsync: (body: { exercise_id: string; session_id: string; response_content: string; attempt_number: number }) =>
+    request<{ evaluation_id: string; response_id: string }>('/api/v1/evaluations/evaluate-async', { method: 'POST', body: JSON.stringify(body) }),
+
+  getEvaluationStatus: (evaluationId: string) =>
+    request<AsyncEvaluationStatus>(`/api/v1/evaluations/${evaluationId}`),
 
   // Progress
   getDashboard: () => request<Dashboard>('/api/v1/progress/dashboard'),
@@ -115,6 +125,7 @@ export interface Exercise {
   rubric: Record<string, string>;
   prompt_version: string;
   difficulty: string;
+  content: ExerciseContent | null;
 }
 
 export interface ErrorDetail {
@@ -183,4 +194,14 @@ export interface Dashboard {
   recommendations: Recommendation[];
   recent_scores: number[];
   streak_days: number;
+}
+
+export interface AsyncEvaluationStatus {
+  evaluation_id: string;
+  response_id: string | null;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  result: EvaluationResult | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
 }

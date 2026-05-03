@@ -64,7 +64,49 @@ function json(route: Route, body: unknown, status = 200) {
   });
 }
 
-export async function mockAIBackend(page: Page) {
+const defaultExercise = {
+  topic_id: 'topic-delf-1',
+  level: 'B1',
+  exam_type: 'DELF',
+  exercise_type: 'writing_prompt',
+  mode: 'writing',
+  context: 'Situation simulée E2E',
+  rubric: { grammar: 'ok', coherence: 'ok' },
+  prompt_version: 'test-v1',
+  difficulty: 'intermediate',
+};
+
+const defaultEvaluationResponse = {
+  evaluation: {
+    response_id: 'resp-1',
+    score: 78,
+    overall_feedback: 'Bonne structure globale, quelques erreurs mineures.',
+    strengths: ['Bonne cohérence'],
+    improvements: ['Mieux accorder les verbes'],
+    errors: [
+      {
+        error_type: 'grammar',
+        severity: 'minor',
+        original_text: 'je suis allé',
+        correction: 'je suis alle',
+        explanation: 'Simplified demo correction.',
+      },
+    ],
+    next_steps: [
+      { type: 'retry', description: 'Réessayez une nouvelle version.' },
+      { type: 'variation', description: 'Passez à une variation du thème.' },
+    ],
+    mlflow_run_id: 'mlflow-mock-run',
+  },
+  weaknesses_updated: true,
+  skill_levels_updated: true,
+};
+
+export async function mockAIBackend(
+  page: Page,
+  exerciseOverride?: Record<string, unknown>,
+  evaluationOverride?: Record<string, unknown>,
+) {
   let exerciseCounter = 0;
 
   await page.route('**/api/v1/**', async (route) => {
@@ -102,47 +144,18 @@ export async function mockAIBackend(page: Page) {
     if (url.includes('/api/v1/exercises/generate') && method === 'POST') {
       exerciseCounter += 1;
       const payload = request.postDataJSON() as { exercise_type?: string };
-      return json(route, {
+      const baseExercise = {
+        ...defaultExercise,
         id: `exercise-${exerciseCounter}`,
-        topic_id: 'topic-delf-1',
-        level: 'B1',
-        exam_type: 'DELF',
         exercise_type: payload.exercise_type ?? 'writing_prompt',
-        mode: 'writing',
         prompt: `Rédigez une réponse test ${exerciseCounter}.`,
-        context: 'Situation simulée E2E',
-        rubric: { grammar: 'ok', coherence: 'ok' },
-        prompt_version: 'test-v1',
-        difficulty: 'intermediate',
-      });
+      };
+      return json(route, { ...baseExercise, ...exerciseOverride });
     }
 
     if (url.includes('/api/v1/evaluations/evaluate') && method === 'POST') {
-      return json(route, {
-        evaluation: {
-          response_id: 'resp-1',
-          score: 78,
-          overall_feedback: 'Bonne structure globale, quelques erreurs mineures.',
-          strengths: ['Bonne cohérence'],
-          improvements: ['Mieux accorder les verbes'],
-          errors: [
-            {
-              error_type: 'grammar',
-              severity: 'minor',
-              original_text: 'je suis allé',
-              correction: 'je suis alle',
-              explanation: 'Simplified demo correction.',
-            },
-          ],
-          next_steps: [
-            { type: 'retry', description: 'Réessayez une nouvelle version.' },
-            { type: 'variation', description: 'Passez à une variation du thème.' },
-          ],
-          mlflow_run_id: 'mlflow-mock-run',
-        },
-        weaknesses_updated: true,
-        skill_levels_updated: true,
-      });
+      const responseBody = evaluationOverride ?? defaultEvaluationResponse;
+      return json(route, responseBody);
     }
 
     if (url.includes('/api/v1/progress/dashboard') && method === 'GET') {

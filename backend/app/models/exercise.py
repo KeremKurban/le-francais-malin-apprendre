@@ -28,6 +28,8 @@ class Exercise(Base):
             "grammar_correction",
             "role_play",
             "multiple_choice",
+            "reading_comprehension",
+            "error_correction",
             name="exercise_type_enum",
         ),
         nullable=False,
@@ -43,6 +45,7 @@ class Exercise(Base):
     difficulty: Mapped[str] = mapped_column(
         SAEnum("easy", "medium", "hard", name="difficulty_enum"), default="medium"
     )
+    content: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     times_used: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
