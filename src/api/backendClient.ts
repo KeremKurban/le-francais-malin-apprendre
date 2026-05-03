@@ -85,6 +85,19 @@ export const api = {
   getDashboard: () => request<Dashboard>('/api/v1/progress/dashboard'),
   getWeaknesses: () => request<WeaknessItem[]>('/api/v1/progress/weaknesses'),
   getRecommendations: () => request<Recommendation[]>('/api/v1/progress/recommendations'),
+
+  // Voice Chat
+  startVoiceSession: (body: { exam_type?: string; level?: string }) =>
+    request<StartSessionResponse>('/api/v1/voice-chat/sessions', { method: 'POST', body: JSON.stringify(body) }),
+
+  sendVoiceMessage: (sessionId: string, body: { user_message: string; turn_number: number }) =>
+    request<ChatMessageResponse>(`/api/v1/voice-chat/sessions/${sessionId}/message`, { method: 'POST', body: JSON.stringify(body) }),
+
+  endVoiceSession: (sessionId: string) =>
+    request<EndSessionResponse>(`/api/v1/voice-chat/sessions/${sessionId}/end`, { method: 'POST' }),
+
+  getVoiceSessions: () =>
+    request<VoiceSessionSummary[]>('/api/v1/voice-chat/sessions'),
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -204,4 +217,58 @@ export interface AsyncEvaluationStatus {
   error_message: string | null;
   created_at: string;
   completed_at: string | null;
+}
+
+// ── Voice Chat Types ──────────────────────────────────────────────────────────
+
+export interface StartSessionResponse {
+  session_id: string;
+  exam_type: string;
+  level: string;
+  topic: string;
+  greeting: string;
+}
+
+export interface ChatMessageResponse {
+  agent_message: string;
+  turn_number: number;
+}
+
+export interface GrammarError {
+  original: string;
+  correction: string;
+  explanation: string;
+}
+
+export interface VocabularySuggestion {
+  original: string;
+  better: string;
+  why: string;
+}
+
+export interface EndSessionResponse {
+  session_id: string;
+  score: number;
+  overall_feedback: string;
+  grammar_errors: GrammarError[];
+  vocabulary_suggestions: VocabularySuggestion[];
+  strengths: string[];
+  improvements: string[];
+  transcript: ConversationTurn[];
+}
+
+export interface ConversationTurn {
+  role: string;
+  content: string;
+  ts?: string;
+}
+
+export interface VoiceSessionSummary {
+  session_id: string;
+  exam_type: string;
+  level: string;
+  topic: string | null;
+  score: number | null;
+  created_at: string;
+  status: string;
 }

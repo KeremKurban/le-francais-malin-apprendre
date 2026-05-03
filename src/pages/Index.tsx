@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles } from 'lucide-react';
+import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles, Mic } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
 import Leaderboard from '@/components/Leaderboard';
 import Mistakes from '@/components/Mistakes';
 import AILearning from '@/pages/AILearning';
+import VoiceChat from '@/components/VoiceChat';
 import { useAuth } from '@/hooks/useAuth';
 import { SupabaseUserManager, UserProfile, UserProgress } from '@/utils/SupabaseUserManager';
 import { useToast } from '@/hooks/use-toast';
@@ -238,6 +239,15 @@ const Index = () => {
                 <Sparkles className="w-4 h-4 mr-1" />
                 Mode IA
               </Button>
+              <Button
+                variant={currentView === 'voice' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('voice')}
+                size="sm"
+                className={currentView === 'voice' ? '' : 'text-green-700 border border-green-200 hover:bg-green-50'}
+              >
+                <Mic className="w-4 h-4 mr-1" />
+                Voix
+              </Button>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -306,6 +316,15 @@ const Index = () => {
               <Sparkles className="w-4 h-4 mr-1" />
               Mode IA
             </Button>
+            <Button
+              variant={currentView === 'voice' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('voice')}
+              size="sm"
+              className="whitespace-nowrap text-green-700"
+            >
+              <Mic className="w-4 h-4 mr-1" />
+              Voix
+            </Button>
           </div>
         </div>
       </header>
@@ -316,7 +335,11 @@ const Index = () => {
         <div style={{ display: currentView === 'ai' ? 'block' : 'none' }}>
           <AILearning />
         </div>
-        {currentView !== 'ai' && renderView()}
+        {/* VoiceChat stays mounted to preserve conversation state */}
+        <div style={{ display: currentView === 'voice' ? 'block' : 'none' }}>
+          <VoiceChat onBack={() => setCurrentView('dashboard')} />
+        </div>
+        {currentView !== 'ai' && currentView !== 'voice' && renderView()}
       </main>
     </div>
   );
