@@ -240,6 +240,15 @@ const Index = () => {
                 <Sparkles className="w-4 h-4 mr-1" />
                 Mode IA
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/voice')}
+                size="sm"
+                className="text-indigo-700 border border-indigo-200 hover:bg-indigo-50"
+              >
+                <Mic className="w-4 h-4 mr-1" />
+                Mode Vocal
+              </Button>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -308,6 +317,15 @@ const Index = () => {
               <Sparkles className="w-4 h-4 mr-1" />
               Mode IA
             </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/voice')}
+              size="sm"
+              className="whitespace-nowrap text-indigo-700"
+            >
+              <Mic className="w-4 h-4 mr-1" />
+              Mode Vocal
+            </Button>
           </div>
         </div>
       </header>
@@ -331,6 +349,7 @@ interface DashboardViewProps {
 }
 
 const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardViewProps) => {
+  const navigate = useNavigate();
   const progressValues = Object.values(userProgress).map(p => p.best_score);
   const averageProgress = progressValues.length > 0 
     ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length 
@@ -402,7 +421,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Continuer l'apprentissage</CardTitle>
@@ -446,12 +465,32 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('mistakes')}
               variant="outline"
               className="w-full border-2 border-red-600 text-red-600 hover:bg-red-50"
             >
               Voir les erreurs
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-indigo-50 to-blue-50">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900 flex items-center gap-2">
+              <Mic className="w-5 h-5 text-indigo-600" />
+              Mode Vocal
+            </CardTitle>
+            <CardDescription>
+              Pratiquez la conversation orale avec un tuteur IA en français
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => navigate('/voice')}
+              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
+            >
+              Commencer à parler
             </Button>
           </CardContent>
         </Card>
