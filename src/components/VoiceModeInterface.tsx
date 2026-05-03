@@ -433,7 +433,7 @@ export default function VoiceModeInterface() {
           onClick={handleMicClick}
           disabled={status === 'thinking'}
           aria-label={
-            status === 'listening' ? 'Arrêter l'écoute' : 'Commencer à parler'
+            status === 'listening' ? "Arrêter l'écoute" : 'Commencer à parler'
           }
           className={
             status === 'listening'
