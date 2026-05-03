@@ -13,7 +13,7 @@ const MAX_PLAYS = 3;
 function normalizeDictation(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[.,!?;:«»"'()\-]/g, '')
+    .replace(/[.,!?;:«»"'()-]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
