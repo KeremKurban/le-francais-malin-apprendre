@@ -42,6 +42,7 @@ const VoiceChat = ({ onBack }: VoiceChatProps) => {
   const [turnNumber, setTurnNumber] = useState(0);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const liveTranscriptRef = useRef('');
   const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
@@ -81,23 +82,20 @@ const VoiceChat = ({ onBack }: VoiceChatProps) => {
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          interim += event.results[i][0].transcript;
-        } else {
-          interim += event.results[i][0].transcript;
-        }
+        interim += event.results[i][0].transcript;
       }
+      liveTranscriptRef.current = interim;
       setLiveTranscript(interim);
     };
 
     recognition.onend = () => {
       setIsRecording(false);
-      const finalTranscript = liveTranscript;
+      const finalTranscript = liveTranscriptRef.current;
+      liveTranscriptRef.current = '';
       if (finalTranscript.trim()) {
         setLiveTranscript('');
         handleSendMessage(finalTranscript.trim());
       } else {
-        // No speech detected — stay in listening phase
         setPhase('speaking');
       }
     };
@@ -111,8 +109,7 @@ const VoiceChat = ({ onBack }: VoiceChatProps) => {
     recognition.start();
     setIsRecording(true);
     setPhase('listening');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveTranscript]);
+  }, [handleSendMessage]);
 
   const handleSendMessage = useCallback(
     async (message: string) => {
