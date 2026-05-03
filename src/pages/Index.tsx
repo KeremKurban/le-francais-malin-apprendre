@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles } from 'lucide-react';
+import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles, Mic } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
@@ -32,6 +33,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUserData();
