@@ -8,6 +8,8 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.database import create_tables
 from app.api.routes import auth, topics, exercises, responses, sessions, progress, evaluations
+from app.api.routes import voice_chat
+from app.models.voice_session import VoiceSession  # noqa: F401 — needed for create_tables
 
 settings = get_settings()
 
@@ -68,6 +70,7 @@ app.include_router(responses.router, prefix=PREFIX)
 app.include_router(sessions.router, prefix=PREFIX)
 app.include_router(progress.router, prefix=PREFIX)
 app.include_router(evaluations.router, prefix=PREFIX)
+app.include_router(voice_chat.router, prefix=PREFIX)
 
 
 @app.get("/api/health")

@@ -35,3 +35,4 @@ class User(Base):
     skill_levels: Mapped[list["SkillLevel"]] = relationship(back_populates="user")  # noqa: F821
     weaknesses: Mapped[list["Weakness"]] = relationship(back_populates="user")  # noqa: F821
     recommendations: Mapped[list["ReviewRecommendation"]] = relationship(back_populates="user")  # noqa: F821
+    voice_sessions: Mapped[list["VoiceSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")  # noqa: F821
