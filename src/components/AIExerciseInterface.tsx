@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Send, RotateCcw, BookOpen, MessageSquare, ChevronRight } from 'lucide-react';
+import { Loader2, Send, RotateCcw, MessageSquare } from 'lucide-react';
 import { api, Exercise, EvaluationResult, NextStep } from '@/api/backendClient';
 import EvaluationFeedback from './EvaluationFeedback';
+import { SkeletonCard } from '@/components/ui/SkeletonCard';
 
 interface AIExerciseInterfaceProps {
   sessionId: string;
@@ -29,16 +30,35 @@ interface ExercisePersistedState {
 }
 
 const EXERCISE_STATE_KEY = 'ai_exercise_state';
+/** Minimum recommended character count for a "sufficient" answer */
+const MIN_RESPONSE_CHARS = 60;
 
 function loadPersistedExerciseState(sessionId: string): ExercisePersistedState | null {
   try {
     const raw = localStorage.getItem(EXERCISE_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Only restore if it belongs to the same session
     return parsed.sessionId === sessionId ? parsed.state : null;
   } catch {
     return null;
+  }
+}
+
+/** Return a left-border accent class based on exercise difficulty */
+function difficultyBorderClass(difficulty?: string): string {
+  switch (difficulty?.toLowerCase()) {
+    case 'easy':
+    case 'facile':
+      return 'border-l-4 border-l-green-400';
+    case 'medium':
+    case 'moyen':
+    case 'intermédiaire':
+      return 'border-l-4 border-l-yellow-400';
+    case 'hard':
+    case 'difficile':
+      return 'border-l-4 border-l-red-400';
+    default:
+      return 'border-l-4 border-l-blue-200';
   }
 }
 
@@ -60,10 +80,11 @@ export default function AIExerciseInterface({
   const [sessionScore, setSessionScore] = useState<number[]>(persisted?.sessionScore ?? []);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Persist exercise state to survive tab switches
   useEffect(() => {
-    if (phase === 'evaluating') return; // don't persist mid-flight state
+    if (phase === 'evaluating') return;
     localStorage.setItem(EXERCISE_STATE_KEY, JSON.stringify({
       sessionId,
       state: { phase, exercise, userResponse, evaluation, attemptNumber, sessionScore },
@@ -77,12 +98,24 @@ export default function AIExerciseInterface({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Animate in the feedback panel when it becomes visible
+  useEffect(() => {
+    if (phase === 'feedback') {
+      // Small delay so the DOM transition fires
+      const id = setTimeout(() => setFeedbackOpen(true), 30);
+      return () => clearTimeout(id);
+    } else {
+      setFeedbackOpen(false);
+    }
+  }, [phase]);
+
   const loadExercise = async (exerciseType = 'writing_prompt', context?: string) => {
     setLoadingExercise(true);
     setError(null);
     setUserResponse('');
     setEvaluation(null);
     setAttemptNumber(1);
+    setFeedbackOpen(false);
     localStorage.removeItem(EXERCISE_STATE_KEY);
     try {
       const ex = await api.generateExercise({
@@ -152,9 +185,19 @@ export default function AIExerciseInterface({
     ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
     : 0;
 
+  // Character-counter colour logic
+  const charCount = userResponse.length;
+  const charRatio = charCount / MIN_RESPONSE_CHARS;
+  const charCountClass =
+    charRatio >= 1
+      ? 'text-green-600 font-semibold'
+      : charRatio >= 0.8
+        ? 'text-yellow-600 font-semibold'
+        : 'text-gray-400';
+
   if (!exercise && !loadingExercise && error) {
     return (
-      <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
+      <div className="max-w-2xl mx-auto py-12 text-center space-y-4 page-enter">
         <p className="text-red-600">{error}</p>
         <div className="flex gap-3 justify-center flex-wrap">
           {['writing_prompt', 'role_play', 'grammar_correction'].map(type => (
@@ -171,7 +214,7 @@ export default function AIExerciseInterface({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 page-enter">
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -194,19 +237,12 @@ export default function AIExerciseInterface({
         </Card>
       )}
 
-      {loadingExercise && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="animate-spin w-8 h-8 mx-auto text-blue-600 mb-4" />
-            <p className="text-gray-600">Claude génère votre exercice…</p>
-          </CardContent>
-        </Card>
-      )}
+      {loadingExercise && <SkeletonCard variant="exercise" />}
 
       {exercise && !loadingExercise && (
         <>
-          {/* Exercise card */}
-          <Card className="border-blue-100 shadow-md">
+          {/* Exercise card — left border indicates difficulty */}
+          <Card className={`shadow-md ${difficultyBorderClass(exercise.difficulty)}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div>
@@ -261,16 +297,19 @@ export default function AIExerciseInterface({
                   disabled={phase === 'evaluating'}
                 />
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">{userResponse.length} caractères</span>
+                  <span className={`text-xs transition-colors ${charCountClass}`}>
+                    {charCount} caractères
+                    {charRatio >= 1 ? ' ✓' : charRatio >= 0.8 ? ' — presque !' : ''}
+                  </span>
                   <Button
                     onClick={submitResponse}
                     disabled={!userResponse.trim() || phase === 'evaluating'}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-[#0055A4] hover:bg-[#003d7a] text-white transition-colors"
                   >
                     {phase === 'evaluating' ? (
                       <>
                         <Loader2 className="animate-spin w-4 h-4 mr-2" />
-                        Évaluation…
+                        Évaluation en cours…
                       </>
                     ) : (
                       <>
@@ -290,14 +329,16 @@ export default function AIExerciseInterface({
             </Card>
           )}
 
-          {/* Feedback */}
+          {/* Feedback — smooth expand animation */}
           {phase === 'feedback' && evaluation && (
-            <EvaluationFeedback
-              evaluation={evaluation}
-              onNextStep={handleNextStep}
-              onNewExercise={() => loadExercise()}
-              onFinish={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onComplete(averageScore); }}
-            />
+            <div className={`feedback-expand ${feedbackOpen ? 'open' : ''}`}>
+              <EvaluationFeedback
+                evaluation={evaluation}
+                onNextStep={handleNextStep}
+                onNewExercise={() => loadExercise()}
+                onFinish={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onComplete(averageScore); }}
+              />
+            </div>
           )}
         </>
       )}

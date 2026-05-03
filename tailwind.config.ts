@@ -19,6 +19,11 @@ export default {
 		},
 		extend: {
 			colors: {
+				french: {
+					blue: '#0055A4',
+					red: '#EF4135',
+					white: '#FFFFFF',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

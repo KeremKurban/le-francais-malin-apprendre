@@ -243,25 +243,35 @@ const Mistakes = () => {
       {/* Mistakes List */}
       {filteredMistakes.length === 0 ? (
         <Card className="text-center py-12">
-          <CardContent>
+          <CardContent className="space-y-4">
             {mistakes.length === 0 ? (
               <>
-                <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Aucune erreur enregistrée
+                <div className="mx-auto w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-4xl">
+                  🎉
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Aucune erreur pour l'instant — vous êtes en feu !
                 </h3>
-                <p className="text-gray-600">
-                  Commencez à faire des exercices pour voir vos erreurs ici et apprendre de vos erreurs.
+                <p className="text-gray-600 max-w-sm mx-auto">
+                  Complétez des exercices pour que vos erreurs apparaissent ici et vous aident à progresser.
                 </p>
+                <Button
+                  className="mt-2 bg-[#0055A4] hover:bg-[#003d7a] text-white touch-manipulation"
+                  onClick={() => window.location.hash = '#ai'}
+                >
+                  Faire un exercice
+                </Button>
               </>
             ) : (
               <>
-                <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <div className="mx-auto w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-4xl">
+                  ✅
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
                   Aucune erreur dans cette catégorie
                 </h3>
                 <p className="text-gray-600">
-                  Parfait ! Vous n'avez fait aucune erreur dans "{filter}".
+                  Parfait ! Vous n'avez fait aucune erreur dans &quot;{filter}&quot;.
                 </p>
               </>
             )}
