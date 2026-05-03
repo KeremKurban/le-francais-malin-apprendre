@@ -1,6 +1,6 @@
 """Tests for the typed exercise content schema (Pydantic v2 discriminated union)."""
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.schemas.exercise_content import (
     ExerciseContent,
@@ -16,12 +16,14 @@ from app.schemas.exercise_content import (
     ErrorItem,
 )
 
+_adapter = TypeAdapter(ExerciseContent)
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _validate(data: dict):
     """Validate a dict against ExerciseContent (discriminated union)."""
-    return ExerciseContent.model_validate(data)  # type: ignore[attr-defined]
+    return _adapter.validate_python(data)
 
 
 # ── WritingPromptContent ───────────────────────────────────────────────────────

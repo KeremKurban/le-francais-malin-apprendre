@@ -9,7 +9,7 @@ import uuid
 from typing import Optional
 
 from openai import AsyncOpenAI
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -25,6 +25,8 @@ from app.prompts.exercise_prompts import (
     PROMPT_VERSION_V2,
 )
 from app.schemas.exercise_content import ExerciseContent
+
+_exercise_content_adapter = TypeAdapter(ExerciseContent)
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +119,7 @@ async def generate_exercise(
     validated_content: dict | None = None
     if use_v2:
         try:
-            validated = ExerciseContent.model_validate(data)  # type: ignore[attr-defined]
+            validated = _exercise_content_adapter.validate_python(data)
             validated_content = validated.model_dump()
         except ValidationError as exc:
             logger.warning(
