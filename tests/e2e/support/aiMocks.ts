@@ -153,6 +153,27 @@ export async function mockAIBackend(
       return json(route, { ...baseExercise, ...exerciseOverride });
     }
 
+    if (url.includes('/api/v1/evaluations/evaluate-async') && method === 'POST') {
+      // Return a stable evaluation_id so the status polling mock can match it.
+      return json(route, { evaluation_id: 'eval-mock-1', response_id: 'resp-mock-1' });
+    }
+
+    // Polling endpoint: GET /api/v1/evaluations/:id
+    if (url.match(/\/api\/v1\/evaluations\/[^/]+$/) && method === 'GET') {
+      const evalResult = evaluationOverride
+        ? (evaluationOverride as { evaluation?: unknown }).evaluation ?? evaluationOverride
+        : defaultEvaluationResponse.evaluation;
+      return json(route, {
+        evaluation_id: 'eval-mock-1',
+        response_id: 'resp-mock-1',
+        status: 'done',
+        result: evalResult,
+        error_message: null,
+        created_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+      });
+    }
+
     if (url.includes('/api/v1/evaluations/evaluate') && method === 'POST') {
       const responseBody = evaluationOverride ?? defaultEvaluationResponse;
       return json(route, responseBody);
