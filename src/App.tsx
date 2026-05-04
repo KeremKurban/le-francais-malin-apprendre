@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
 import NotFound from '@/pages/NotFound';
+import VoiceConversation from '@/pages/VoiceConversation';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/voice" element={<VoiceConversation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
