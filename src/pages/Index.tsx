@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, Flame, BookOpen, LogOut } from 'lucide-react';
+import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles } from 'lucide-react';
+import DailyChallenge from '@/components/DailyChallenge';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
 import Leaderboard from '@/components/Leaderboard';
 import Mistakes from '@/components/Mistakes';
+import AILearning from '@/pages/AILearning';
 import { useAuth } from '@/hooks/useAuth';
 import { SupabaseUserManager, UserProfile, UserProgress } from '@/utils/SupabaseUserManager';
 import { useToast } from '@/hooks/use-toast';
@@ -157,6 +159,8 @@ const Index = () => {
         return <Leaderboard />;
       case 'mistakes':
         return <Mistakes />;
+      case 'ai':
+        return <AILearning />;
       default:
         return <DashboardView userProfile={userProfile} userProgress={userProgress} setCurrentView={setCurrentView} />;
     }
@@ -220,12 +224,21 @@ const Index = () => {
               >
                 Classement
               </Button>
-              <Button 
+              <Button
                 variant={currentView === 'mistakes' ? 'default' : 'ghost'}
                 onClick={() => setCurrentView('mistakes')}
                 size="sm"
               >
                 Erreurs
+              </Button>
+              <Button
+                variant={currentView === 'ai' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('ai')}
+                size="sm"
+                className={currentView === 'ai' ? '' : 'text-purple-700 border border-purple-200 hover:bg-purple-50'}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                Mode IA
               </Button>
             </nav>
 
@@ -278,13 +291,22 @@ const Index = () => {
             >
               Classement
             </Button>
-            <Button 
+            <Button
               variant={currentView === 'mistakes' ? 'default' : 'ghost'}
               onClick={() => setCurrentView('mistakes')}
               size="sm"
               className="whitespace-nowrap"
             >
               Erreurs
+            </Button>
+            <Button
+              variant={currentView === 'ai' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('ai')}
+              size="sm"
+              className="whitespace-nowrap text-purple-700"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              Mode IA
             </Button>
           </div>
         </div>
@@ -314,6 +336,9 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
 
   return (
     <div className="space-y-8">
+      {/* Daily Challenge */}
+      <DailyChallenge onStartChallenge={() => setCurrentView('ai')} />
+
       {/* Welcome Section */}
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
