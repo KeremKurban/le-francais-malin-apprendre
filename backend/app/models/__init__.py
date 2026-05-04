@@ -8,6 +8,8 @@ from app.models.weakness import Weakness
 from app.models.skill_level import SkillLevel
 from app.models.recommendation import ReviewRecommendation
 from app.models.experiment_run import ExperimentRun
+from app.models.exercise_cache import ExerciseCache, UserSeenExercise
+from app.models.async_evaluation import AsyncEvaluation
 
 __all__ = [
     "User",
@@ -20,4 +22,7 @@ __all__ = [
     "SkillLevel",
     "ReviewRecommendation",
     "ExperimentRun",
+    "ExerciseCache",
+    "UserSeenExercise",
+    "AsyncEvaluation",
 ]

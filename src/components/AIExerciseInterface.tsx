@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Send, RotateCcw, BookOpen, MessageSquare, ChevronRight } from 'lucide-react';
-import { api, Exercise, EvaluationResult, NextStep } from '@/api/backendClient';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Send, RotateCcw, MessageSquare } from 'lucide-react';
+import { api, Exercise, EvaluationResult, NextStep, AsyncEvaluationStatus } from '@/api/backendClient';
+import { useToast } from '@/hooks/use-toast';
 import EvaluationFeedback from './EvaluationFeedback';
+import ExerciseRenderer from './exercises/ExerciseRenderer';
+import { cn } from '@/lib/utils';
 
 interface AIExerciseInterfaceProps {
   sessionId: string;
@@ -17,7 +21,15 @@ interface AIExerciseInterfaceProps {
   onBack: () => void;
 }
 
-type Phase = 'exercise' | 'evaluating' | 'feedback' | 'next_step';
+type Phase = 'exercise' | 'evaluating' | 'feedback' | 'next_step' | 'finishing';
+
+type ExercisePool = 'fresh' | 'history';
+
+interface PendingEvaluation {
+  evaluationId: string;
+  exerciseId: string;
+  exercisePrompt: string;
+}
 
 interface ExercisePersistedState {
   phase: Phase;
@@ -26,6 +38,7 @@ interface ExercisePersistedState {
   evaluation: EvaluationResult | null;
   attemptNumber: number;
   sessionScore: number[];
+  exercisePool?: ExercisePool;
 }
 
 const EXERCISE_STATE_KEY = 'ai_exercise_state';
@@ -35,7 +48,6 @@ function loadPersistedExerciseState(sessionId: string): ExercisePersistedState |
     const raw = localStorage.getItem(EXERCISE_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Only restore if it belongs to the same session
     return parsed.sessionId === sessionId ? parsed.state : null;
   } catch {
     return null;
@@ -51,6 +63,9 @@ export default function AIExerciseInterface({
   onBack,
 }: AIExerciseInterfaceProps) {
   const persisted = loadPersistedExerciseState(sessionId);
+  const { toast } = useToast();
+
+  const persistedPool: ExercisePool = persisted?.exercisePool === 'history' ? 'history' : 'fresh';
 
   const [phase, setPhase] = useState<Phase>(persisted?.phase ?? 'exercise');
   const [exercise, setExercise] = useState<Exercise | null>(persisted?.exercise ?? null);
@@ -58,26 +73,41 @@ export default function AIExerciseInterface({
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(persisted?.evaluation ?? null);
   const [attemptNumber, setAttemptNumber] = useState(persisted?.attemptNumber ?? 1);
   const [sessionScore, setSessionScore] = useState<number[]>(persisted?.sessionScore ?? []);
+  const [exercisePool, setExercisePool] = useState<ExercisePool>(persistedPool);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Persist exercise state to survive tab switches
-  useEffect(() => {
-    if (phase === 'evaluating') return; // don't persist mid-flight state
-    localStorage.setItem(EXERCISE_STATE_KEY, JSON.stringify({
-      sessionId,
-      state: { phase, exercise, userResponse, evaluation, attemptNumber, sessionScore },
-    }));
-  }, [phase, exercise, userResponse, evaluation, attemptNumber, sessionScore, sessionId]);
+  const [pendingEvaluations, setPendingEvaluations] = useState<PendingEvaluation[]>([]);
+  const pollingIntervals = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   useEffect(() => {
-    if (!persisted?.exercise) {
-      loadExercise('writing_prompt');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      pollingIntervals.current.forEach(interval => clearInterval(interval));
+      pollingIntervals.current.clear();
+    };
   }, []);
 
-  const loadExercise = async (exerciseType = 'writing_prompt', context?: string) => {
+  useEffect(() => {
+    if (phase === 'evaluating' || phase === 'finishing') return;
+    localStorage.setItem(EXERCISE_STATE_KEY, JSON.stringify({
+      sessionId,
+      state: {
+        phase,
+        exercise,
+        userResponse,
+        evaluation,
+        attemptNumber,
+        sessionScore,
+        exercisePool,
+      },
+    }));
+  }, [phase, exercise, userResponse, evaluation, attemptNumber, sessionScore, sessionId, exercisePool]);
+
+  const fetchExercise = async (
+    exerciseType = 'writing_prompt',
+    options?: { context?: string; pool?: ExercisePool },
+  ) => {
+    const pool = options?.pool ?? exercisePool;
     setLoadingExercise(true);
     setError(null);
     setUserResponse('');
@@ -91,7 +121,8 @@ export default function AIExerciseInterface({
         exercise_type: exerciseType,
         mode: 'writing',
         topic_id: topicId,
-        context,
+        context: options?.context,
+        exercise_pool: pool,
       });
       setExercise(ex);
       setPhase('exercise');
@@ -102,24 +133,75 @@ export default function AIExerciseInterface({
     }
   };
 
+  const startPollingEvaluation = (evaluationId: string) => {
+    if (pollingIntervals.current.has(evaluationId)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const status: AsyncEvaluationStatus = await api.getEvaluationStatus(evaluationId);
+        if (status.status === 'done' || status.status === 'failed') {
+          clearInterval(interval);
+          pollingIntervals.current.delete(evaluationId);
+
+          setPendingEvaluations(prev => prev.filter(p => p.evaluationId !== evaluationId));
+
+          if (status.status === 'done' && status.result) {
+            setSessionScore(prev => [...prev, status.result!.score]);
+            setEvaluation(status.result);
+            setPhase('feedback');
+            toast({
+              title: 'Évaluation prête',
+              description: `Score : ${Math.round(status.result.score)}%`,
+            });
+          }
+        }
+      } catch {
+        // Ignore polling errors silently
+      }
+    }, 2000);
+
+    pollingIntervals.current.set(evaluationId, interval);
+  };
+
   const submitResponse = async () => {
     if (!exercise || !userResponse.trim()) return;
     setPhase('evaluating');
     setError(null);
+
     try {
-      const result = await api.evaluate({
+      const { evaluation_id } = await api.evaluateAsync({
         exercise_id: exercise.id,
         session_id: sessionId,
         response_content: userResponse,
         attempt_number: attemptNumber,
       });
-      setEvaluation(result.evaluation);
-      setSessionScore(prev => [...prev, result.evaluation.score]);
-      setPhase('feedback');
+
+      const pending: PendingEvaluation = {
+        evaluationId: evaluation_id,
+        exerciseId: exercise.id,
+        exercisePrompt: exercise.prompt,
+      };
+      setPendingEvaluations(prev => [...prev, pending]);
+      startPollingEvaluation(evaluation_id);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur lors de l\'évaluation');
+      setError(e instanceof Error ? e.message : "Erreur lors de l'envoi");
       setPhase('exercise');
     }
+  };
+
+  const handleFinish = async () => {
+    if (pendingEvaluations.length > 0) {
+      setPhase('finishing');
+      const deadline = Date.now() + 30_000;
+      while (pendingEvaluations.length > 0 && Date.now() < deadline) {
+        await new Promise(res => setTimeout(res, 500));
+      }
+    }
+    localStorage.removeItem(EXERCISE_STATE_KEY);
+    const avg = sessionScore.length
+      ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
+      : 0;
+    onComplete(avg);
   };
 
   const handleNextStep = async (step: NextStep) => {
@@ -135,16 +217,16 @@ export default function AIExerciseInterface({
         setPhase('exercise');
         break;
       case 'variation':
-        await loadExercise('writing_prompt', step.exercise_hint);
+        await fetchExercise('writing_prompt', { context: step.exercise_hint, pool: 'fresh' });
         break;
       case 'mini_role_play':
-        await loadExercise('role_play', step.exercise_hint);
+        await fetchExercise('role_play', { context: step.exercise_hint, pool: 'fresh' });
         break;
       case 'grammar_focus':
-        await loadExercise('grammar_correction', step.exercise_hint);
+        await fetchExercise('grammar_correction', { context: step.exercise_hint, pool: 'fresh' });
         break;
       default:
-        await loadExercise();
+        await fetchExercise('writing_prompt', { pool: 'fresh' });
     }
   };
 
@@ -152,33 +234,36 @@ export default function AIExerciseInterface({
     ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
     : 0;
 
-  if (!exercise && !loadingExercise && error) {
+  const loadingHint =
+    exercisePool === 'history'
+      ? 'Recherche dans vos exercices déjà vus…'
+      : 'Génération du nouvel exercice…';
+
+  if (phase === 'finishing') {
     return (
       <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
-        <p className="text-red-600">{error}</p>
-        <div className="flex gap-3 justify-center flex-wrap">
-          {['writing_prompt', 'role_play', 'grammar_correction'].map(type => (
-            <Button key={type} variant="outline" onClick={() => loadExercise(type)}>
-              {type === 'writing_prompt' && 'Production écrite'}
-              {type === 'role_play' && 'Jeu de rôle'}
-              {type === 'grammar_correction' && 'Correction grammaticale'}
-            </Button>
-          ))}
-        </div>
-        <Button variant="ghost" onClick={onBack}>← Retour</Button>
+        <Loader2 className="animate-spin w-8 h-8 mx-auto text-blue-600 mb-4" />
+        <p className="text-gray-600">Finalisation…</p>
+        <p className="text-sm text-gray-400">
+          {pendingEvaluations.length} évaluation{pendingEvaluations.length > 1 ? 's' : ''} en attente
+        </p>
       </div>
     );
   }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onBack(); }}>←</Button>
           <Badge variant="outline">{examType}</Badge>
           <Badge variant="outline">{level}</Badge>
           {exercise && <Badge variant="outline">{exercise.difficulty}</Badge>}
+          {pendingEvaluations.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {pendingEvaluations.length} éval. en cours…
+            </Badge>
+          )}
         </div>
         {sessionScore.length > 0 && (
           <div className="text-sm text-gray-600">
@@ -194,18 +279,71 @@ export default function AIExerciseInterface({
         </Card>
       )}
 
-      {loadingExercise && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="animate-spin w-8 h-8 mx-auto text-blue-600 mb-4" />
-            <p className="text-gray-600">Claude génère votre exercice…</p>
+      {!exercise && !loadingExercise && (
+        <Card className="border-emerald-100 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-xl">Prêt pour un exercice ?</CardTitle>
+            <CardDescription>
+              Choisissez la source, puis générez quand vous voulez — aucune requête n’est envoyée avant le bouton vert.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-3 flex-1">
+                <span className="text-sm font-medium text-gray-700">Source des sujets</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={cn(
+                      'text-sm transition-colors',
+                      exercisePool === 'history' ? 'font-semibold text-gray-900' : 'text-muted-foreground',
+                    )}
+                  >
+                    Déjà vus
+                  </span>
+                  <Switch
+                    checked={exercisePool === 'fresh'}
+                    onCheckedChange={checked => setExercisePool(checked ? 'fresh' : 'history')}
+                    aria-label="Basculer entre exercices déjà vus et nouveaux"
+                  />
+                  <span
+                    className={cn(
+                      'text-sm transition-colors',
+                      exercisePool === 'fresh' ? 'font-semibold text-gray-900' : 'text-muted-foreground',
+                    )}
+                  >
+                    Nouveau (IA)
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+                  {exercisePool === 'history'
+                    ? 'Un sujet tiré au hasard parmi ceux que vous avez déjà eus (même examen, niveau et type — filtré par le thème si vous en avez choisi un).'
+                    : 'Un nouveau sujet généré par l’IA, enregistré en base pour être réutilisable par d’autres apprenants.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="lg"
+                className="bg-green-600 hover:bg-green-700 text-white shrink-0 px-8"
+                onClick={() => void fetchExercise()}
+              >
+                Générer l’exercice
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {exercise && !loadingExercise && (
+      {loadingExercise && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="animate-spin w-8 h-8 mx-auto text-emerald-600 mb-4" />
+            <p className="text-gray-600">{loadingHint}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {exercise && !loadingExercise && phase !== 'feedback' && (
         <>
-          {/* Exercise card */}
           <Card className="border-blue-100 shadow-md">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -226,17 +364,26 @@ export default function AIExerciseInterface({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => loadExercise()}
-                  title="Générer un autre exercice"
+                  onClick={() => void fetchExercise(exercise.exercise_type)}
+                  title="Autre exercice (même mode que la barre ci-dessus)"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-wrap">
-                {exercise.prompt}
-              </p>
+              {exercise.content ? (
+                <ExerciseRenderer
+                  content={exercise.content}
+                  onAnswerChange={setUserResponse}
+                  answer={userResponse}
+                  showResult={phase === 'feedback'}
+                />
+              ) : (
+                <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-wrap">
+                  {exercise.prompt}
+                </p>
+              )}
               {attemptNumber > 1 && (
                 <p className="mt-2 text-sm text-amber-600">
                   Tentative {attemptNumber} — réessayez en tenant compte des corrections précédentes.
@@ -245,8 +392,7 @@ export default function AIExerciseInterface({
             </CardContent>
           </Card>
 
-          {/* Response input */}
-          {(phase === 'exercise' || phase === 'evaluating') && (
+          {(phase === 'exercise' || phase === 'evaluating') && !exercise.content && (
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -262,44 +408,99 @@ export default function AIExerciseInterface({
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400">{userResponse.length} caractères</span>
-                  <Button
-                    onClick={submitResponse}
-                    disabled={!userResponse.trim() || phase === 'evaluating'}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {phase === 'evaluating' ? (
-                      <>
-                        <Loader2 className="animate-spin w-4 h-4 mr-2" />
-                        Évaluation…
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Soumettre
-                      </>
+                  <div className="flex gap-2">
+                    {sessionScore.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleFinish}
+                        disabled={phase === 'evaluating'}
+                      >
+                        Terminer
+                      </Button>
                     )}
-                  </Button>
+                    <Button
+                      onClick={submitResponse}
+                      disabled={!userResponse.trim() || phase === 'evaluating'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {phase === 'evaluating' ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                          Envoi…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Soumettre
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {(phase === 'exercise' || phase === 'evaluating') && exercise.content && (
+            <Card>
+              <CardContent className="pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{userResponse.length} caractères</span>
+                  <div className="flex gap-2">
+                    {sessionScore.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleFinish}
+                        disabled={phase === 'evaluating'}
+                      >
+                        Terminer
+                      </Button>
+                    )}
+                    <Button
+                      onClick={submitResponse}
+                      disabled={!userResponse.trim() || phase === 'evaluating'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {phase === 'evaluating' ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                          Envoi…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Soumettre
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 {phase === 'evaluating' && (
                   <div className="space-y-2">
                     <Progress value={66} className="h-1" />
-                    <p className="text-xs text-gray-500 text-center">Claude analyse votre réponse…</p>
+                    <p className="text-xs text-gray-500 text-center">Analyse de votre réponse…</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Feedback */}
-          {phase === 'feedback' && evaluation && (
-            <EvaluationFeedback
-              evaluation={evaluation}
-              onNextStep={handleNextStep}
-              onNewExercise={() => loadExercise()}
-              onFinish={() => { localStorage.removeItem(EXERCISE_STATE_KEY); onComplete(averageScore); }}
-            />
-          )}
         </>
+      )}
+
+      {phase === 'feedback' && evaluation && exercise && (
+        <EvaluationFeedback
+          evaluation={evaluation}
+          onNextStep={handleNextStep}
+          onNewExercise={() => {
+            setExercise(null);
+            setEvaluation(null);
+            setUserResponse('');
+            setAttemptNumber(1);
+            setPhase('exercise');
+          }}
+          onFinish={handleFinish}
+        />
       )}
     </div>
   );

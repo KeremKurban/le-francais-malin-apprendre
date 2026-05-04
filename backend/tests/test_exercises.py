@@ -109,3 +109,55 @@ async def test_get_exercise_not_found(client, auth_headers):
     import uuid
     resp = await client.get(f"/api/v1/exercises/{uuid.uuid4()}", headers=auth_headers)
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_generate_history_empty_returns_404(client, auth_headers):
+    resp = await client.post(
+        "/api/v1/exercises/generate",
+        json={
+            "exam_type": "DELF",
+            "level": "B1",
+            "exercise_type": "writing_prompt",
+            "mode": "writing",
+            "exercise_pool": "history",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_generate_history_returns_previous_fresh_exercise(client, auth_headers):
+    mock_resp = _make_mock_response(json.dumps(EXERCISE_JSON))
+
+    with patch("app.services.exercise_service.client") as mock_client:
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        first = await client.post(
+            "/api/v1/exercises/generate",
+            json={
+                "exam_type": "DELF",
+                "level": "B1",
+                "exercise_type": "writing_prompt",
+                "mode": "writing",
+                "exercise_pool": "fresh",
+            },
+            headers=auth_headers,
+        )
+
+    assert first.status_code == 200
+    exercise_id = first.json()["id"]
+
+    second = await client.post(
+        "/api/v1/exercises/generate",
+        json={
+            "exam_type": "DELF",
+            "level": "B1",
+            "exercise_type": "writing_prompt",
+            "mode": "writing",
+            "exercise_pool": "history",
+        },
+        headers=auth_headers,
+    )
+    assert second.status_code == 200
+    assert second.json()["id"] == exercise_id

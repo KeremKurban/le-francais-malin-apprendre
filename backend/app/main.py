@@ -1,11 +1,16 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from openai import RateLimitError
+from sqlalchemy import select
+from starlette.responses import JSONResponse
 
+from app.api.routes import auth, topics, exercises, responses, sessions, progress, evaluations
 from app.core.config import get_settings
 from app.core.database import create_tables
-from app.api.routes import auth, topics, exercises, responses, sessions, progress, evaluations
+from app.core.llm_exceptions import USER_MESSAGE_OPENROUTER_QUOTA
 
 settings = get_settings()
 
@@ -18,6 +23,28 @@ async def lifespan(app: FastAPI):
         await seed()
     except Exception as exc:
         print(f"[startup] seed_data skipped: {exc}")
+    try:
+        from app.services.cache_service import warm_cache
+        from app.services.async_eval_service import run_evaluation_background
+        # Recover orphaned async evaluations
+        from app.models.async_evaluation import AsyncEvaluation
+        from app.core.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            orphans = (await db.execute(
+                select(AsyncEvaluation).where(AsyncEvaluation.status.in_(["pending", "running"]))
+            )).scalars().all()
+            for orphan in orphans:
+                orphan.status = "pending"
+                task = asyncio.create_task(run_evaluation_background(orphan.id))
+            if orphans:
+                await db.commit()
+        # Pre-warm common combinations
+        asyncio.create_task(warm_cache([
+            ("DELF", "A2", "writing_prompt"), ("DELF", "B1", "writing_prompt"),
+            ("FIDE", "A2", "role_play"), ("FIDE", "B1", "writing_prompt"),
+        ]))
+    except Exception as e:
+        print(f"[startup] cache/recovery skipped: {e}")
     yield
 
 
@@ -35,6 +62,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RateLimitError)
+async def openrouter_rate_limit_handler(_request, _exc: RateLimitError):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": USER_MESSAGE_OPENROUTER_QUOTA},
+    )
+
 
 PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=PREFIX)

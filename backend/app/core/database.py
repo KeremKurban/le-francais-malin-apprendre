@@ -1,3 +1,5 @@
+from sqlalchemy import text
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -39,3 +41,8 @@ async def get_db() -> AsyncSession:
 async def create_tables() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all does not add new columns to existing tables; older DBs lack `content`
+        if make_url(settings.database_url).drivername.startswith("postgresql"):
+            await conn.execute(
+                text("ALTER TABLE exercises ADD COLUMN IF NOT EXISTS content JSONB")
+            )

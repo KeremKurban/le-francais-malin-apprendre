@@ -46,6 +46,7 @@ export default function MockExam({ sessionId, examType, level, onComplete, onBac
         level,
         exercise_type: exerciseTypes[currentIndex % exerciseTypes.length],
         mode: 'writing',
+        exercise_pool: 'fresh',
       });
       setExercise(ex);
     } finally {

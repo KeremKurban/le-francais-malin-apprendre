@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -39,3 +40,21 @@ class EvaluateResponse(BaseModel):
     evaluation: EvaluationResult
     weaknesses_updated: bool
     skill_levels_updated: bool
+
+
+class AsyncEvaluationAccepted(BaseModel):
+    evaluation_id: UUID
+    response_id: UUID
+
+
+class AsyncEvaluationStatus(BaseModel):
+    evaluation_id: UUID
+    response_id: Optional[UUID]
+    status: str  # pending/running/done/failed
+    result: Optional[dict] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
