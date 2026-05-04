@@ -23,7 +23,23 @@ async function request<T>(
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const resp = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  } catch (e: unknown) {
+    const isNetwork =
+      e instanceof TypeError ||
+      (typeof e === 'object' &&
+        e !== null &&
+        'name' in e &&
+        (e as { name?: string }).name === 'TypeError');
+    if (isNetwork) {
+      throw new Error(
+        `Impossible de joindre l'API (${BASE_URL}). Démarrez le backend, vérifiez VITE_API_BASE_URL, et ouvrez l'app via la même URL que dans CORS_ORIGINS (ex. localhost vs 127.0.0.1).`,
+      );
+    }
+    throw e instanceof Error ? e : new Error('Erreur réseau');
+  }
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ detail: resp.statusText }));
     throw new Error(err.detail ?? 'API error');

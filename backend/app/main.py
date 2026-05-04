@@ -3,11 +3,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from openai import RateLimitError
 from sqlalchemy import select
+from starlette.responses import JSONResponse
 
+from app.api.routes import auth, topics, exercises, responses, sessions, progress, evaluations
 from app.core.config import get_settings
 from app.core.database import create_tables
-from app.api.routes import auth, topics, exercises, responses, sessions, progress, evaluations
+from app.core.llm_exceptions import USER_MESSAGE_OPENROUTER_QUOTA
 
 settings = get_settings()
 
@@ -59,6 +62,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RateLimitError)
+async def openrouter_rate_limit_handler(_request, _exc: RateLimitError):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": USER_MESSAGE_OPENROUTER_QUOTA},
+    )
+
 
 PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=PREFIX)

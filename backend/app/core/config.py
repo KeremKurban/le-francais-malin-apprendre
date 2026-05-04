@@ -29,10 +29,14 @@ class Settings(BaseSettings):
     mlflow_tracking_uri: str = "http://mlflow:5000"
     mlflow_experiment_name: str = "francais-malin-evaluations"
 
-    # CORS
+    # CORS (127.0.0.1 vs localhost are distinct origins in browsers)
     cors_origins: List[str] = [
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
 
     @field_validator("cors_origins", mode="before")

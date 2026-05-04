@@ -8,6 +8,7 @@ from app.models.async_evaluation import AsyncEvaluation
 from app.models.exercise import Exercise
 from app.models.response import UserResponse
 from app.models.session import LearningSession
+from app.core.llm_exceptions import USER_MESSAGE_OPENROUTER_QUOTA, is_rate_limit_error
 from app.services.evaluation_service import evaluate_response
 from app.services.weakness_service import update_weakness, update_skill_level
 from app.services.recommendation_service import refresh_recommendations
@@ -54,7 +55,8 @@ async def run_evaluation_background(eval_id: uuid.UUID) -> None:
                 ae2 = await db2.get(AsyncEvaluation, eval_id)
                 if ae2:
                     ae2.status = "failed"
-                    ae2.error_message = str(e)[:500]
+                    msg = USER_MESSAGE_OPENROUTER_QUOTA if is_rate_limit_error(e) else str(e)
+                    ae2.error_message = msg[:500]
                     await db2.commit()
 
 
