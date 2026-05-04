@@ -14,29 +14,34 @@ test('loads topic map and opens exercise interface', async ({ page }) => {
   await startPracticeSession(page);
 
   await page.getByText('Banque en Suisse').first().click();
-  await expect(page.getByRole('heading', { name: 'Exercice IA' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Production écrite' })).toBeVisible();
+  // Nav switches to practice view — "Exercice IA" is an active nav button
+  await expect(page.getByRole('button', { name: 'Exercice IA' })).toBeVisible();
+  // Exercise auto-loads; defaultExercise is writing_prompt so CardTitle shows this
+  await expect(page.getByText('Production écrite')).toBeVisible({ timeout: 8000 });
 });
 
 test('generates exercise and submits evaluation loop', async ({ page }) => {
   await startPracticeSession(page);
   await page.getByText('Banque en Suisse').first().click();
-  await page.getByRole('button', { name: 'Production écrite' }).click();
 
-  await expect(page.getByText('Rédigez une réponse test')).toBeVisible();
+  // Exercise auto-loads after topic selection
+  await expect(page.getByText(/Rédigez une réponse test/)).toBeVisible({ timeout: 8000 });
   await page.getByPlaceholder('Écrivez votre réponse ici…').fill('Je voudrais ouvrir un compte bancaire.');
   await page.getByRole('button', { name: 'Soumettre' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Évaluation générale' })).toBeVisible();
+  // Async eval fires; mock returns done on first poll (~2 s); feedback appears after
+  await expect(page.getByRole('heading', { name: 'Évaluation générale' })).toBeVisible({ timeout: 12000 });
   await expect(page.getByText('Que voulez-vous faire maintenant ?')).toBeVisible();
 });
 
 test('opens dashboard after finishing exercise session', async ({ page }) => {
   await startPracticeSession(page);
   await page.getByText('Banque en Suisse').first().click();
-  await page.getByRole('button', { name: 'Production écrite' }).click();
+
+  await expect(page.getByText(/Rédigez une réponse test/)).toBeVisible({ timeout: 8000 });
   await page.getByPlaceholder('Écrivez votre réponse ici…').fill('Réponse de test pour le dashboard.');
   await page.getByRole('button', { name: 'Soumettre' }).click();
+  await expect(page.getByRole('heading', { name: 'Évaluation générale' })).toBeVisible({ timeout: 12000 });
   await page.getByRole('button', { name: 'Terminer la session' }).click();
 
   await expect(page.getByRole('button', { name: 'Mes progrès' })).toBeVisible();

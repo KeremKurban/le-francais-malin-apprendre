@@ -196,17 +196,31 @@ export default function AIExerciseInterface({
       prefetchNextExercise(exercise.exercise_type);
 
       // Advance to next question right away using prefetched if available
-      const nextEx = prefetchedExercise;
-      setPrefetchedExercise(null);
-      if (nextEx) {
-        setExercise(nextEx);
-        setUserResponse('');
-        setEvaluation(null);
-        setAttemptNumber(1);
-        setPhase('exercise');
-      } else {
-        await loadExercise(exercise.exercise_type);
-      }
+      // Prefetch next exercise in background while we wait for evaluation
+      prefetchNextExercise(exercise.exercise_type);
+
+      // Poll until evaluation is ready, then show feedback
+      const interval = setInterval(async () => {
+        try {
+          const status: AsyncEvaluationStatus = await api.getEvaluationStatus(evaluation_id);
+          if (status.status === 'done' || status.status === 'failed') {
+            clearInterval(interval);
+            pollingIntervals.current.delete(evaluation_id);
+            if (status.status === 'done' && status.result) {
+              setEvaluation(status.result);
+              setSessionScore(prev => [...prev, status.result!.score]);
+              setPhase('feedback');
+            } else {
+              setError('Évaluation échouée. Réessayez.');
+              setPhase('exercise');
+            }
+          }
+        } catch {
+          // ignore transient polling errors
+        }
+      }, 2000);
+
+      pollingIntervals.current.set(evaluation_id, interval);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur lors de l'envoi");
       setPhase('exercise');
@@ -214,14 +228,6 @@ export default function AIExerciseInterface({
   };
 
   const handleFinish = async () => {
-    if (pendingEvaluations.length > 0) {
-      setPhase('finishing');
-      // Wait for all pending evaluations to complete (max 30s)
-      const deadline = Date.now() + 30_000;
-      while (pendingEvaluations.length > 0 && Date.now() < deadline) {
-        await new Promise(res => setTimeout(res, 500));
-      }
-    }
     localStorage.removeItem(EXERCISE_STATE_KEY);
     const avg = sessionScore.length
       ? Math.round(sessionScore.reduce((a, b) => a + b, 0) / sessionScore.length)
@@ -242,16 +248,28 @@ export default function AIExerciseInterface({
         setPhase('exercise');
         break;
       case 'variation':
-        await loadExercise('writing_prompt', step.exercise_hint);
+        if (prefetchedExercise && !step.exercise_hint) {
+          setExercise(prefetchedExercise);
+          setPrefetchedExercise(null);
+          setUserResponse(''); setEvaluation(null); setAttemptNumber(1); setPhase('exercise');
+        } else {
+          await loadExercise('writing_prompt', step.exercise_hint);
+        }
         break;
       case 'mini_role_play':
         await loadExercise('role_play', step.exercise_hint);
         break;
       case 'grammar_focus':
-        await loadExercise('grammar_correction', step.exercise_hint);
+        await loadExercise('error_correction', step.exercise_hint);
         break;
       default:
-        await loadExercise();
+        if (prefetchedExercise) {
+          setExercise(prefetchedExercise);
+          setPrefetchedExercise(null);
+          setUserResponse(''); setEvaluation(null); setAttemptNumber(1); setPhase('exercise');
+        } else {
+          await loadExercise();
+        }
     }
   };
 
@@ -264,11 +282,11 @@ export default function AIExerciseInterface({
       <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
         <p className="text-red-600">{error}</p>
         <div className="flex gap-3 justify-center flex-wrap">
-          {['writing_prompt', 'role_play', 'grammar_correction'].map(type => (
+          {['writing_prompt', 'role_play', 'error_correction'].map(type => (
             <Button key={type} variant="outline" onClick={() => loadExercise(type)}>
               {type === 'writing_prompt' && 'Production écrite'}
               {type === 'role_play' && 'Jeu de rôle'}
-              {type === 'grammar_correction' && 'Correction grammaticale'}
+              {type === 'error_correction' && 'Correction grammaticale'}
             </Button>
           ))}
         </div>
@@ -337,7 +355,7 @@ export default function AIExerciseInterface({
                   <CardTitle className="text-lg">
                     {exercise.exercise_type === 'writing_prompt' && 'Production écrite'}
                     {exercise.exercise_type === 'role_play' && 'Jeu de rôle'}
-                    {exercise.exercise_type === 'grammar_correction' && 'Correction grammaticale'}
+                    {exercise.exercise_type === 'error_correction' && 'Correction grammaticale'}
                     {exercise.exercise_type === 'fill_blank' && 'Texte à trous'}
                     {exercise.exercise_type === 'translation' && 'Traduction'}
                   </CardTitle>
