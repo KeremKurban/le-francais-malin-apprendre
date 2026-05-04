@@ -78,6 +78,8 @@ cp .env.example .env
 docker-compose up --build
 ```
 
+**Already running the stack?** See **[`docs/DOCKER.md`](docs/DOCKER.md)** for when to rebuild, when to run `down`, when hot reload is enough, and a copy-paste prompt for assistants.
+
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:5173 |

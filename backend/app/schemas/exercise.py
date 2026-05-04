@@ -1,6 +1,6 @@
-from typing import Optional, List
+from typing import Optional, Literal
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class GenerateExerciseRequest(BaseModel):
@@ -10,7 +10,8 @@ class GenerateExerciseRequest(BaseModel):
     exercise_type: str = "writing_prompt"
     mode: str = "writing"
     context: Optional[str] = None
-    use_cache: bool = True
+    #: ``fresh`` = new LLM generation (stored for reuse across users). ``history`` = recycle an exercise this user already saw.
+    exercise_pool: Literal["fresh", "history"] = "fresh"
 
 
 class ExerciseOut(BaseModel):

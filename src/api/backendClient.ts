@@ -80,7 +80,8 @@ export const api = {
     exercise_type: string;
     mode: string;
     context?: string;
-    use_cache?: boolean;
+    /** fresh = new LLM exercise (stored for reuse). history = random exercise you already saw. */
+    exercise_pool?: 'fresh' | 'history';
   }) => request<Exercise>('/api/v1/exercises/generate', { method: 'POST', body: JSON.stringify(body) }),
 
   // Evaluations

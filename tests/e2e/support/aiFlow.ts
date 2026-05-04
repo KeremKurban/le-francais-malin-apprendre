@@ -14,15 +14,13 @@ export async function startPracticeSession(page: Page) {
 }
 
 /**
- * Clicks "Pratique libre" on the session setup page and waits for the exercise
- * to load. The exercise card renders immediately after the generate request
- * resolves, so we wait for the textarea to become visible.
+ * Clicks "Pratique libre", then "Générer l'exercice" (no LLM call until that button).
  */
 export async function startFreePracticeSession(page: Page) {
   await openAIMode(page);
   await expect(page.getByRole('heading', { name: 'Nouvelle session' })).toBeVisible();
   await page.getByRole('button', { name: 'Pratique libre' }).click();
-  // Wait for the exercise card to render (the textarea is present once the
-  // generate call completes and the exercise state is populated).
+  await expect(page.getByRole('button', { name: /Générer l'exercice/ })).toBeVisible({ timeout: 8000 });
+  await page.getByRole('button', { name: /Générer l'exercice/ }).click();
   await expect(page.getByPlaceholder('Écrivez votre réponse ici…')).toBeVisible({ timeout: 8000 });
 }

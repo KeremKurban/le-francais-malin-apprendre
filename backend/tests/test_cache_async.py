@@ -65,7 +65,7 @@ async def _create_exercise_and_session(client, headers, db_session):
                 "level": "B1",
                 "exercise_type": "writing_prompt",
                 "mode": "writing",
-                "use_cache": False,
+                "exercise_pool": "fresh",
             },
             headers=headers,
         )
