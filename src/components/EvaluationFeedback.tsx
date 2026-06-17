@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, RefreshCw, Flag } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp, ArrowRight, RefreshCw, Flag, PlusCircle } from 'lucide-react';
 import { EvaluationResult, NextStep } from '@/api/backendClient';
+import { useVocabDeck } from '@/hooks/useVocabDeck';
 
 /** Renders a markdown string with bold (**text**) and newlines. No extra deps needed. */
 function MarkdownText({ text, className }: { text: string; className?: string }) {
@@ -87,6 +88,13 @@ function ScoreRing({ score }: { score: number }) {
 export default function EvaluationFeedback({ evaluation, onNextStep, onNewExercise, onFinish }: Props) {
   const [errorsExpanded, setErrorsExpanded] = useState(true);
   const [selectedStep, setSelectedStep] = useState<NextStep | null>(null);
+  const [addedToVocab, setAddedToVocab] = useState<Set<number>>(new Set());
+  const { addCard } = useVocabDeck();
+
+  const handleAddToVocab = (correction: string, index: number) => {
+    addCard(correction, '');
+    setAddedToVocab((prev) => new Set(prev).add(index));
+  };
 
   const { score, overall_feedback, strengths, improvements, errors, next_steps } = evaluation;
 
@@ -161,10 +169,23 @@ export default function EvaluationFeedback({ evaluation, onNextStep, onNewExerci
                     <span className="text-xs text-gray-500 capitalize">{err.error_type}</span>
                   </div>
                   <div className="space-y-1 text-sm">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-red-500 line-through">{err.original_text}</span>
                       <ArrowRight className="w-3 h-3 text-gray-400" />
                       <span className="text-green-700 font-medium">{err.correction}</span>
+                      <button
+                        onClick={() => handleAddToVocab(err.correction, i)}
+                        disabled={addedToVocab.has(i)}
+                        title="Add correction to vocab deck"
+                        className={`ml-auto text-xs flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors ${
+                          addedToVocab.has(i)
+                            ? 'text-emerald-600 cursor-default'
+                            : 'text-blue-600 hover:text-blue-800 hover:bg-blue-100'
+                        }`}
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        {addedToVocab.has(i) ? 'Added' : '+ Add to vocab'}
+                      </button>
                     </div>
                     <p className="text-gray-600 text-xs">{err.explanation}</p>
                   </div>

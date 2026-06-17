@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles } from 'lucide-react';
+import { Trophy, Star, Flame, BookOpen, LogOut, Sparkles, GraduationCap } from 'lucide-react';
 import GrammarTopics from '@/components/GrammarTopics';
 import ExerciseInterface from '@/components/ExerciseInterface';
 import ProgressDashboard from '@/components/ProgressDashboard';
@@ -238,6 +239,16 @@ const Index = () => {
                 <Sparkles className="w-4 h-4 mr-1" />
                 Mode IA
               </Button>
+              <Link to="/vocab">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                >
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Vocabulaire
+                </Button>
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -306,6 +317,16 @@ const Index = () => {
               <Sparkles className="w-4 h-4 mr-1" />
               Mode IA
             </Button>
+            <Link to="/vocab">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="whitespace-nowrap text-emerald-700"
+              >
+                <BookOpen className="w-4 h-4 mr-1" />
+                Vocab
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -400,7 +421,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">Continuer l'apprentissage</CardTitle>
@@ -409,12 +430,35 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('topics')}
               className="w-full bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700"
             >
               Commencer les exercices
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-600" />
+              <CardTitle className="text-xl text-gray-900">Vocabulaire</CardTitle>
+            </div>
+            <CardDescription>
+              Révisez vos mots avec la répétition espacée (algorithme SM-2) pour mémoriser durablement
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/vocab">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+              >
+                <GraduationCap className="w-4 h-4 mr-2" />
+                Pratiquer le vocab
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
@@ -426,7 +470,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('leaderboard')}
               variant="outline"
               className="w-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
@@ -444,7 +488,7 @@ const DashboardView = ({ userProfile, userProgress, setCurrentView }: DashboardV
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('mistakes')}
               variant="outline"
               className="w-full border-2 border-red-600 text-red-600 hover:bg-red-50"

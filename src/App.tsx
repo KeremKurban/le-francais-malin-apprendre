@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
 import NotFound from '@/pages/NotFound';
+import VocabPractice from '@/pages/VocabPractice';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -65,6 +66,14 @@ function App() {
                   <Index />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/vocab"
+              element={
+                <ProtectedRoute>
+                  <VocabPractice />
+                </ProtectedRoute>
+              }
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
