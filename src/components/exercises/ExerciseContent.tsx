@@ -1,5 +1,9 @@
 
 import { Check, X } from 'lucide-react';
+import SentenceScramble from './types/SentenceScramble';
+import ErrorCorrection from './types/ErrorCorrection';
+import ConjugationDrill from './types/ConjugationDrill';
+import ListenAndType from './types/ListenAndType';
 
 interface Exercise {
   type: string;
@@ -11,6 +15,16 @@ interface Exercise {
   hint: string;
   explanation: string;
   blanks?: { position: number; options: string[] }[];
+  // New exercise type fields
+  sentence?: string;
+  incorrectSentence?: string;
+  correctSentence?: string;
+  verb?: string;
+  tense?: string;
+  conjugations?: {
+    je: string; tu: string; il: string;
+    nous: string; vous: string; ils: string;
+  };
 }
 
 interface ExerciseContentProps {
@@ -39,13 +53,13 @@ const ExerciseContent = ({
       <div className="text-lg font-medium text-gray-900 mb-4">
         {exercise.prompt}
       </div>
-      
+
       <div className="grid grid-cols-1 gap-3">
         {exercise.choices?.map((choice, index) => {
           const isSelected = selectedAnswers.includes(choice);
           const isCorrectChoice = exercise.answer.split(',').includes(choice);
           const showFeedback = showResult && isSelected;
-          
+
           return (
             <div
               key={index}
@@ -84,7 +98,7 @@ const ExerciseContent = ({
           );
         })}
       </div>
-      
+
       {/* Show correct answers when result is shown */}
       {showResult && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -95,19 +109,19 @@ const ExerciseContent = ({
     </div>
   );
 
-  const renderErrorCorrection = () => (
+  const renderErrorCorrectionLegacy = () => (
     <div className="space-y-6">
       <div className="text-lg font-medium text-gray-900 mb-4">
         {exercise.prompt}
       </div>
-      
+
       <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
         <div className="text-base leading-relaxed flex flex-wrap gap-2">
           {exercise.words?.map((word, index) => {
             const isSelected = selectedWords.includes(index);
             const isCorrectError = exercise.answer.split(',').includes(index.toString());
             const showFeedback = showResult && isSelected;
-            
+
             return (
               <span
                 key={index}
@@ -128,7 +142,7 @@ const ExerciseContent = ({
           })}
         </div>
       </div>
-      
+
       {/* Show correct errors when result is shown */}
       {showResult && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -150,15 +164,15 @@ const ExerciseContent = ({
 
   const renderComplexText = () => {
     if (!exercise.blanks) return null;
-    
+
     const textParts = exercise.text?.split('____') || [];
-    
+
     return (
       <div className="space-y-6">
         <div className="text-lg font-medium text-gray-900 mb-4">
           {exercise.prompt}
         </div>
-        
+
         <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
           <div className="text-base leading-relaxed">
             {textParts.map((part, index) => (
@@ -167,7 +181,7 @@ const ExerciseContent = ({
                 {index < exercise.blanks!.length && (
                   <select
                     className={`mx-2 px-3 py-1 border rounded-md bg-white font-medium min-w-32 ${
-                      showResult 
+                      showResult
                         ? selectedAnswers[index] === exercise.answer.split(',')[index]
                           ? 'text-green-700 border-green-500'
                           : 'text-red-700 border-red-500'
@@ -189,7 +203,7 @@ const ExerciseContent = ({
             ))}
           </div>
         </div>
-        
+
         {/* Show correct answers when result is shown */}
         {showResult && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -201,12 +215,82 @@ const ExerciseContent = ({
     );
   };
 
+  // ── New exercise type renderers ──────────────────────────────────────────
+
+  const renderSentenceScramble = () => {
+    const sentence = exercise.sentence ?? exercise.answer;
+    return (
+      <div className="space-y-4">
+        <div className="text-lg font-medium text-gray-900">{exercise.prompt}</div>
+        <SentenceScramble
+          sentence={sentence}
+          hint={exercise.hint || undefined}
+          onComplete={() => {/* handled internally; parent can hook via ExerciseActions */}}
+        />
+      </div>
+    );
+  };
+
+  const renderErrorCorrectionNew = () => {
+    if (!exercise.incorrectSentence || !exercise.correctSentence) {
+      // Fallback to legacy word-click variant
+      return renderErrorCorrectionLegacy();
+    }
+    return (
+      <div className="space-y-4">
+        <div className="text-lg font-medium text-gray-900">{exercise.prompt}</div>
+        <ErrorCorrection
+          incorrectSentence={exercise.incorrectSentence}
+          correctSentence={exercise.correctSentence}
+          explanation={exercise.explanation}
+          onComplete={() => {/* handled internally */}}
+        />
+      </div>
+    );
+  };
+
+  const renderConjugationDrill = () => {
+    if (!exercise.verb || !exercise.tense || !exercise.conjugations) return null;
+    return (
+      <div className="space-y-4">
+        <div className="text-lg font-medium text-gray-900">{exercise.prompt}</div>
+        <ConjugationDrill
+          verb={exercise.verb}
+          tense={exercise.tense}
+          conjugations={exercise.conjugations}
+          onComplete={() => {/* handled internally */}}
+        />
+      </div>
+    );
+  };
+
+  const renderListenAndType = () => {
+    const sentence = exercise.sentence ?? exercise.text ?? '';
+    return (
+      <div className="space-y-4">
+        <div className="text-lg font-medium text-gray-900">{exercise.prompt}</div>
+        <ListenAndType
+          sentence={sentence}
+          onComplete={() => {/* handled internally */}}
+        />
+      </div>
+    );
+  };
+
+  // ── Routing ──────────────────────────────────────────────────────────────
+
   if (exercise.type === 'multiple_choice') {
     return renderMultipleChoice();
   } else if (exercise.type === 'error_correction') {
-    return renderErrorCorrection();
+    return renderErrorCorrectionNew();
   } else if (exercise.type === 'complex_text') {
     return renderComplexText();
+  } else if (exercise.type === 'sentence_scramble') {
+    return renderSentenceScramble();
+  } else if (exercise.type === 'conjugation_drill') {
+    return renderConjugationDrill();
+  } else if (exercise.type === 'listen_and_type') {
+    return renderListenAndType();
   }
 
   return (
@@ -214,7 +298,7 @@ const ExerciseContent = ({
       <div className="text-lg font-medium text-gray-900">
         {exercise.prompt}
       </div>
-      
+
       {exercise.text && (
         <div className="bg-gray-50 p-4 rounded-lg border">
           <p className="text-base leading-relaxed">{exercise.text}</p>
