@@ -1,0 +1,9 @@
+id,name,modality
+DB00619,imatinib,small_molecule
+DB01259,lapatinib,small_molecule
+DB00530,erlotinib,small_molecule
+DB08875,cabozantinib,small_molecule
+DB09079,nintedanib,small_molecule
+DB11800,ruxolitinib,small_molecule
+DB00072,trastuzumab,monoclonal_antibody
+DB05294,vandetanib,small_molecule

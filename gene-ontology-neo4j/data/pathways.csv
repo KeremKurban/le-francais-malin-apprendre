@@ -1,0 +1,11 @@
+id,name,database
+R-HSA-73894,DNA Repair,Reactome
+R-HSA-69278,"Cell Cycle, Mitotic",Reactome
+R-HSA-162582,Signal Transduction,Reactome
+R-HSA-1640170,Cell Cycle,Reactome
+hsa04010,MAPK signaling pathway,KEGG
+hsa04151,PI3K-Akt signaling pathway,KEGG
+hsa04110,Cell cycle,KEGG
+hsa04630,JAK-STAT signaling pathway,KEGG
+hsa04310,Wnt signaling pathway,KEGG
+hsa04210,Apoptosis,KEGG
