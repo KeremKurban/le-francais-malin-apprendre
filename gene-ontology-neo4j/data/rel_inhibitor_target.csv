@@ -1,0 +1,9 @@
+inhibitor_id,gene,action,mechanism
+DB00619,ABL1,inhibits,competitive
+DB01259,EGFR,inhibits,competitive
+DB00530,EGFR,inhibits,competitive
+DB08875,RET,inhibits,competitive
+DB09079,FLT3,inhibits,competitive
+DB11800,JAK2,inhibits,competitive
+DB00072,EGFR,inhibits,competitive
+DB05294,KIT,inhibits,competitive

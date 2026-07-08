@@ -1,0 +1,11 @@
+symbol,name,family
+SP1,Sp1 transcription factor,zinc_finger
+TBP,TATA-box binding protein,general
+NFKB1,nuclear factor kappa B subunit 1,Rel
+STAT3,signal transducer STAT3,STAT
+CREB1,cAMP responsive element binding 1,bZIP
+E2F1,E2F transcription factor 1,E2F
+HIF1A,hypoxia inducible factor 1 alpha,bHLH-PAS
+GATA1,GATA binding protein 1,GATA
+YY1,YY1 transcription factor,zinc_finger
+CTCF,CCCTC-binding factor (insulator),zinc_finger

@@ -1,0 +1,57 @@
+id,uniprot_name,full_name
+ENSP00100000,TP53_HUMAN,tumor protein p53
+ENSP00100001,BRCA1_HUMAN,BRCA1 DNA repair associated
+ENSP00100002,BRCA2_HUMAN,BRCA2 DNA repair associated
+ENSP00100003,EGFR_HUMAN,epidermal growth factor receptor
+ENSP00100004,KRAS_HUMAN,"KRAS proto-oncogene, GTPase"
+ENSP00100005,MYC_HUMAN,"MYC proto-oncogene, bHLH TF"
+ENSP00100006,APC_HUMAN,APC regulator of WNT signaling pathway
+ENSP00100007,PTEN_HUMAN,phosphatase and tensin homolog
+ENSP00100008,RB1_HUMAN,RB transcriptional corepressor 1
+ENSP00100009,CFTR_HUMAN,CF transmembrane conductance regulator
+ENSP00100010,HBB_HUMAN,hemoglobin subunit beta
+ENSP00100011,HTT_HUMAN,huntingtin
+ENSP00100012,DMD_HUMAN,dystrophin
+ENSP00100013,FMR1_HUMAN,FMRP translational regulator 1
+ENSP00100014,MECP2_HUMAN,methyl-CpG binding protein 2
+ENSP00100015,APOE_HUMAN,apolipoprotein E
+ENSP00100016,APP_HUMAN,amyloid beta precursor protein
+ENSP00100017,PSEN1_HUMAN,presenilin 1
+ENSP00100018,SNCA_HUMAN,synuclein alpha
+ENSP00100019,LRRK2_HUMAN,leucine rich repeat kinase 2
+ENSP00100020,SOD1_HUMAN,superoxide dismutase 1
+ENSP00100021,G6PD_HUMAN,glucose-6-phosphate dehydrogenase
+ENSP00100022,LDLR_HUMAN,low density lipoprotein receptor
+ENSP00100023,MLH1_HUMAN,mutL homolog 1
+ENSP00100024,MSH2_HUMAN,mutS homolog 2
+ENSP00100025,VHL_HUMAN,von Hippel-Lindau tumor suppressor
+ENSP00100026,NF1_HUMAN,neurofibromin 1
+ENSP00100027,NF2_HUMAN,"NF2, moesin-ezrin-radixin like"
+ENSP00100028,TSC1_HUMAN,TSC complex subunit 1
+ENSP00100029,TSC2_HUMAN,TSC complex subunit 2
+ENSP00100030,FBN1_HUMAN,fibrillin 1
+ENSP00100031,COL1A1_HUMAN,collagen type I alpha 1 chain
+ENSP00100032,PAH_HUMAN,phenylalanine hydroxylase
+ENSP00100033,GBA_HUMAN,glucosylceramidase beta
+ENSP00100034,SMN1_HUMAN,"survival of motor neuron 1, telomeric"
+ENSP00100035,ATM_HUMAN,ATM serine/threonine kinase
+ENSP00100036,WT1_HUMAN,WT1 transcription factor
+ENSP00100037,MEN1_HUMAN,menin 1
+ENSP00100038,RET_HUMAN,ret proto-oncogene
+ENSP00100039,KIT_HUMAN,"KIT proto-oncogene, RTK"
+ENSP00100040,ABL1_HUMAN,"ABL proto-oncogene 1, tyrosine kinase"
+ENSP00100041,BCR_HUMAN,BCR activator of RhoGEF and GTPase
+ENSP00100042,FLT3_HUMAN,fms related receptor tyrosine kinase 3
+ENSP00100043,JAK2_HUMAN,Janus kinase 2
+ENSP00100044,IDH1_HUMAN,isocitrate dehydrogenase (NADP(+)) 1
+ENSP00100045,CDKN2A_HUMAN,cyclin dependent kinase inhibitor 2A
+ENSP00100046,MITF_HUMAN,melanocyte inducing transcription factor
+ENSP00100047,VEGFA_HUMAN,vascular endothelial growth factor A
+ENSP00100048,TNF_HUMAN,tumor necrosis factor
+ENSP00100049,IL6_HUMAN,interleukin 6
+ENSP00100050,INS_HUMAN,insulin
+ENSP00100051,GCK_HUMAN,glucokinase
+ENSP00100052,HNF1A_HUMAN,HNF1 homeobox A
+ENSP00100053,F8_HUMAN,coagulation factor VIII
+ENSP00100054,F9_HUMAN,coagulation factor IX
+ENSP00100055,CYP21A2_HUMAN,cytochrome P450 family 21 subfamily A 2

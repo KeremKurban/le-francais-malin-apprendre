@@ -1,0 +1,23 @@
+# Spin up Neo4j with APOC and the generated CSVs mounted into the import dir.
+#
+#   docker compose up -d
+#   # then in the Neo4j Browser (http://localhost:7474, neo4j/testpassword123):
+#   #   run cypher/01_constraints.cypher, 02_load_nodes.cypher, 03_load_relationships.cypher
+#   # or from the host:  NEO4J_PASSWORD=testpassword123 python scripts/load_neo4j.py --wipe
+services:
+  neo4j:
+    image: neo4j:5.20
+    container_name: gene-ontology-neo4j
+    ports:
+      - "7474:7474"   # HTTP / Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/testpassword123
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    volumes:
+      - ./data:/var/lib/neo4j/import   # CSVs become file:///<name>.csv
+      - neo4j_data:/data
+volumes:
+  neo4j_data:

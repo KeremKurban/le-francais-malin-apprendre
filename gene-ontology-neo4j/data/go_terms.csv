@@ -1,0 +1,9 @@
+id,name,aspect
+GO:0006355,regulation of DNA-templated transcription,biological_process
+GO:0003700,DNA-binding transcription factor activity,molecular_function
+GO:0006281,DNA repair,biological_process
+GO:0008283,cell population proliferation,biological_process
+GO:0006915,apoptotic process,biological_process
+GO:0005634,nucleus,cellular_component
+GO:0005886,plasma membrane,cellular_component
+GO:0004672,protein kinase activity,molecular_function

@@ -1,0 +1,51 @@
+id,name,ontology
+MONDO:0001516,spinal muscular atrophy,MONDO
+MONDO:0001734,tuberous sclerosis,MONDO
+MONDO:0004975,Alzheimer disease,MONDO
+MONDO:0004976,amyotrophic lateral sclerosis,MONDO
+MONDO:0004993,breast carcinoma,MONDO
+MONDO:0005010,diabetic retinopathy,MONDO
+MONDO:0005105,melanoma,MONDO
+MONDO:0005180,Parkinson disease,MONDO
+MONDO:0005233,non-small cell lung carcinoma,MONDO
+MONDO:0005575,colorectal cancer,MONDO
+MONDO:0005835,Lynch syndrome,MONDO
+MONDO:0006058,Wilms tumor,MONDO
+MONDO:0007034,neurofibromatosis type 2,MONDO
+MONDO:0007254,hereditary breast ovarian cancer syndrome,MONDO
+MONDO:0007449,maturity-onset diabetes of the young type 2,MONDO
+MONDO:0007451,maturity-onset diabetes of the young type 3,MONDO
+MONDO:0007540,multiple endocrine neoplasia type 1,MONDO
+MONDO:0007739,Huntington disease,MONDO
+MONDO:0007750,familial hypercholesterolemia,MONDO
+MONDO:0007947,Marfan syndrome,MONDO
+MONDO:0008380,retinoblastoma,MONDO
+MONDO:0008383,rheumatoid arthritis,MONDO
+MONDO:0008667,von Hippel-Lindau disease,MONDO
+MONDO:0008840,ataxia-telangiectasia,MONDO
+MONDO:0009061,cystic fibrosis,MONDO
+MONDO:0009693,Burkitt lymphoma,MONDO
+MONDO:0009831,pancreatic carcinoma,MONDO
+MONDO:0009861,phenylketonuria,MONDO
+MONDO:0009891,polycythemia vera,MONDO
+MONDO:0009902,beta thalassemia,MONDO
+MONDO:0010214,glucose-6-phosphate dehydrogenase deficiency,MONDO
+MONDO:0010383,fragile X syndrome,MONDO
+MONDO:0010602,hemophilia A,MONDO
+MONDO:0010603,hemophilia B,MONDO
+MONDO:0010679,Duchenne muscular dystrophy,MONDO
+MONDO:0010726,Rett syndrome,MONDO
+MONDO:0011073,permanent neonatal diabetes mellitus,MONDO
+MONDO:0011382,sickle cell anemia,MONDO
+MONDO:0011719,gastrointestinal stromal tumor,MONDO
+MONDO:0011996,chronic myeloid leukemia,MONDO
+MONDO:0016063,Cowden syndrome,MONDO
+MONDO:0017827,multiple endocrine neoplasia type 2,MONDO
+MONDO:0018150,Gaucher disease,MONDO
+MONDO:0018177,glioma,MONDO
+MONDO:0018543,congenital adrenal hyperplasia,MONDO
+MONDO:0018874,acute myeloid leukemia,MONDO
+MONDO:0018875,Li-Fraumeni syndrome,MONDO
+MONDO:0018975,neurofibromatosis type 1,MONDO
+MONDO:0019019,osteogenesis imperfecta,MONDO
+MONDO:0021056,familial adenomatous polyposis,MONDO
